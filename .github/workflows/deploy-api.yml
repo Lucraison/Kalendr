@@ -3,10 +3,6 @@ name: Deploy API
 on:
   push:
     branches: [main]
-    paths:
-      - 'Kalendr.API/**'
-      - 'Kalendr.Shared/**'
-      - 'Dockerfile'
 
 jobs:
   deploy:
