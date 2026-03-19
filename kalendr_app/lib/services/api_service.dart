@@ -11,7 +11,7 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  static const String _base = 'http://10.0.2.2:5115';
+  static const String _base = 'https://kalendr.nherrera.dev';
 
   String? _token;
 
