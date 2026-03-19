@@ -1,0 +1,47 @@
+name: kalendr_app
+description: "Shared calendar app for family and friend groups."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  provider: ^6.1.2
+  intl: ^0.19.0
+  google_fonts: ^6.2.1
+  table_calendar: ^3.1.2
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
+
+  share_plus: ^10.1.4
+  flutter_native_splash: ^2.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#FF6B6B"
+  adaptive_icon_foreground: "assets/icon/icon_fg.png"
+
+flutter_native_splash:
+  color: "#FF6B6B"
+  color_dark: "#FF6B6B"
+  android: true
+  ios: false
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/

@@ -1,0 +1,25 @@
+# .NET
+bin/
+obj/
+*.user
+*.db
+*.db-shm
+*.db-wal
+
+# Flutter
+kalendr_app/.dart_tool/
+kalendr_app/build/
+kalendr_app/.flutter-plugins
+kalendr_app/.flutter-plugins-dependencies
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.idea/
+
+# Old MAUI project
+Kalendr.App/
+
+# Claude memory
+.claude/

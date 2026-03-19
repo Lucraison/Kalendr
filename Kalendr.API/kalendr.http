@@ -1,0 +1,75 @@
+@baseUrl = http://localhost:5115
+@token = PASTE_TOKEN_HERE
+
+### 1. Register a user
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "Alice",
+  "email": "alice@test.com",
+  "password": "Password123!"
+}
+
+### 2. Register a second user
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "Bob",
+  "email": "bob@test.com",
+  "password": "Password123!"
+}
+
+### 3. Login (copy the token from the response into @token above)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@test.com",
+  "password": "Password123!"
+}
+
+### 4. Create a group
+POST {{baseUrl}}/api/groups
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Family"
+}
+
+### 5. Get my groups (copy the inviteCode from the response)
+GET {{baseUrl}}/api/groups
+Authorization: Bearer {{token}}
+
+### 6. Join a group (paste invite code below)
+POST {{baseUrl}}/api/groups/join
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "inviteCode": "PASTE_INVITE_CODE"
+}
+
+### 7. Create an event (paste groupId below)
+POST {{baseUrl}}/api/events
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "groupId": "PASTE_GROUP_ID",
+  "title": "Team lunch",
+  "description": "Pizza place downtown",
+  "startTime": "2026-03-20T12:00:00Z",
+  "endTime": "2026-03-20T13:00:00Z",
+  "isWorkHours": false
+}
+
+### 8. Get all events for a group
+GET {{baseUrl}}/api/events/group/PASTE_GROUP_ID
+Authorization: Bearer {{token}}
+
+### 9. Filter events by a specific user
+GET {{baseUrl}}/api/events/group/PASTE_GROUP_ID?userId=PASTE_USER_ID
+Authorization: Bearer {{token}}
