@@ -34,3 +34,13 @@ jobs:
         with:
           name: kalendr-android
           path: kalendr_app/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          files: kalendr_app/build/app/outputs/flutter-apk/app-release.apk
+          body: Latest build of Kalendr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
