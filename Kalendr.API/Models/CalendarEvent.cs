@@ -9,9 +9,12 @@ public class CalendarEvent
     public DateTime EndTime { get; set; }
     public bool IsWorkHours { get; set; }
 
-    public Guid GroupId { get; set; }
-    public Group Group { get; set; } = null!;
+    public Guid? GroupId { get; set; }
+    public Group? Group { get; set; }
 
     public Guid CreatedByUserId { get; set; }
     public User CreatedBy { get; set; } = null!;
+
+    public string? Color { get; set; }
+    public ICollection<EventGroupShare> SharedWith { get; set; } = [];
 }

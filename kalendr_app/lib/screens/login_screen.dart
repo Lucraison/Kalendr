@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -192,6 +193,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: GoogleFonts.nunito(color: kPrimary, fontSize: 14),
                 ),
               ),
+              if (!_isRegister)
+                TextButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
+                  child: Text('Forgot password?', style: GoogleFonts.nunito(color: KalendrTheme.subtext(context), fontSize: 13)),
+                ),
               const SizedBox(height: 32),
             ],
           ),
@@ -202,24 +208,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _field(TextEditingController ctrl, String hint, IconData icon,
       {bool obscure = false, TextInputType keyboard = TextInputType.text}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: KalendrTheme.field(context),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: TextField(
-        controller: ctrl,
-        obscureText: obscure,
-        keyboardType: keyboard,
-        style: GoogleFonts.nunito(color: KalendrTheme.text(context)),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context)),
-          prefixIcon: Icon(icon, color: KalendrTheme.muted(context), size: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    if (!obscure) {
+      return Container(
+        decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
+        child: TextField(
+          controller: ctrl,
+          keyboardType: keyboard,
+          textCapitalization: TextCapitalization.none,
+          style: GoogleFonts.nunito(color: KalendrTheme.text(context)),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context)),
+            prefixIcon: Icon(icon, color: KalendrTheme.muted(context), size: 20),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
         ),
-      ),
-    );
+      );
+    }
+    return StatefulBuilder(builder: (ctx, set) {
+      bool hidden = true;
+      return StatefulBuilder(builder: (ctx2, set2) => Container(
+        decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
+        child: TextField(
+          controller: ctrl,
+          obscureText: hidden,
+          keyboardType: keyboard,
+          textCapitalization: TextCapitalization.none,
+          style: GoogleFonts.nunito(color: KalendrTheme.text(context)),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context)),
+            prefixIcon: Icon(icon, color: KalendrTheme.muted(context), size: 20),
+            suffixIcon: IconButton(
+              icon: Icon(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  size: 18, color: KalendrTheme.muted(context)),
+              onPressed: () => set2(() => hidden = !hidden),
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+      ));
+    });
   }
 }

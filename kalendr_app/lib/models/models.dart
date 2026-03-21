@@ -140,8 +140,12 @@ class CalendarEvent {
   DateTime startTime;
   DateTime endTime;
   bool isAllDay;
+  bool isWorkHours;
   final String createdByUserId;
   final String createdByUsername;
+  final String? groupId;
+  String? color;
+  List<String> sharedGroupIds;
 
   CalendarEvent({
     required this.id,
@@ -150,18 +154,26 @@ class CalendarEvent {
     required this.startTime,
     required this.endTime,
     required this.isAllDay,
+    this.isWorkHours = false,
     required this.createdByUserId,
     required this.createdByUsername,
+    this.groupId,
+    this.color,
+    this.sharedGroupIds = const [],
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> j) => CalendarEvent(
         id: j['id'].toString(),
         title: j['title'],
         description: j['description'],
-        startTime: DateTime.parse(j['startTime']).toLocal(),
-        endTime: DateTime.parse(j['endTime']).toLocal(),
-        isAllDay: j['isWorkHours'] ?? false,
+        startTime: DateTime.parse(j['startTime']),
+        endTime: DateTime.parse(j['endTime']),
+        isAllDay: j['isAllDay'] ?? false,
+        isWorkHours: j['isWorkHours'] ?? false,
         createdByUserId: j['createdByUserId'].toString(),
         createdByUsername: j['createdByUsername'],
+        groupId: j['groupId']?.toString(),
+        color: j['color'],
+        sharedGroupIds: (j['sharedGroupIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
       );
 }

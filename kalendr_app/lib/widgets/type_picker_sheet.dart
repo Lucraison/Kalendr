@@ -24,7 +24,7 @@ class TypePickerSheet extends StatelessWidget {
             fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
         const SizedBox(height: 16),
         _typeCard(context,
-          icon: Icons.event_rounded, color: kPrimary,
+          icon: Icons.event_rounded, color: const Color(0xFFFF6B6B),
           title: 'Event',
           subtitle: 'A one-time or recurring moment — birthday, meeting, trip...',
           onTap: onEvent,

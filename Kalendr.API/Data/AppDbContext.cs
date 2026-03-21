@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<EventRsvp> Rsvps => Set<EventRsvp>();
     public DbSet<EventComment> Comments => Set<EventComment>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<EventGroupShare> EventGroupShares => Set<EventGroupShare>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,7 +38,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<EventReaction>()
             .HasOne(r => r.Event)
             .WithMany()
-            .HasForeignKey(r => r.EventId);
+            .HasForeignKey(r => r.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<EventReaction>()
             .HasOne(r => r.User)
@@ -47,7 +49,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<EventRsvp>()
             .HasOne(r => r.Event)
             .WithMany()
-            .HasForeignKey(r => r.EventId);
+            .HasForeignKey(r => r.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<EventRsvp>()
             .HasOne(r => r.User)
@@ -79,5 +82,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+
+        modelBuilder.Entity<EventGroupShare>()
+            .HasKey(s => new { s.EventId, s.GroupId });
+
+        modelBuilder.Entity<EventGroupShare>()
+            .HasOne(s => s.Event)
+            .WithMany(e => e.SharedWith)
+            .HasForeignKey(s => s.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EventGroupShare>()
+            .HasOne(s => s.Group)
+            .WithMany()
+            .HasForeignKey(s => s.GroupId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

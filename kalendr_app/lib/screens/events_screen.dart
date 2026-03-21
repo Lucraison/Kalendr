@@ -263,9 +263,11 @@ class _EventsScreenState extends State<EventsScreen> {
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AddEventSheet(
-              onAdd: (title, desc, start, end, allDay) async {
+              groupId: widget.group.id,
+              onAdd: (title, desc, start, end, allDay, color, sharedGroupIds) async {
                 final api = context.read<AppProvider>().api;
-                final e = await api.createEvent(widget.group.id, title, desc, start, end, allDay);
+                final e = await api.createEvent(widget.group.id, title, desc, start, end, allDay,
+                    color: color, sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
                 if (mounted) setState(() => _events.insert(0, e));
               },
             ),
@@ -278,9 +280,10 @@ class _EventsScreenState extends State<EventsScreen> {
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AddWorkScheduleSheet(
-              onAdd: (title, desc, start, end, allDay) async {
+              onAdd: (title, desc, start, end, allDay, sharedGroupIds) async {
                 final api = context.read<AppProvider>().api;
-                final e = await api.createEvent(widget.group.id, title, desc, start, end, allDay);
+                final e = await api.createEvent(widget.group.id, title, desc, start, end, true,
+                    color: '#3B82F6', sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
                 if (mounted) setState(() => _events.insert(0, e));
               },
             ),
@@ -575,11 +578,12 @@ class _EventsScreenState extends State<EventsScreen> {
 
         if (choice == null) return false;
         if (choice == 'all') {
-          for (final ev in [e, ...similar]) {
-            setState(() => _events.removeWhere((x) => x.id == ev.id));
-            api.deleteEvent(widget.group.id, ev.id);
+          final toDelete = [e, ...similar];
+          setState(() { for (final ev in toDelete) _events.removeWhere((x) => x.id == ev.id); });
+          for (final ev in toDelete) {
+            try { await api.deleteEvent(widget.group.id, ev.id); } catch (_) {}
           }
-          return false; // already removed from list
+          return false;
         }
         return true; // single delete — let onDismissed handle
       },

@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../models/models.dart';
 import '../theme.dart';
 import 'add_event_sheet.dart';
+import 'calendar_picker_sheet.dart';
 
 const _kWorkColor = Color(0xFF3B82F6);
 
 class AddWorkScheduleSheet extends StatefulWidget {
-  final Future<void> Function(String title, String? desc, DateTime start, DateTime end, bool isAllDay) onAdd;
+  final Future<void> Function(String title, String? desc, DateTime start, DateTime end, bool isAllDay, List<String> sharedGroupIds) onAdd;
+  final Future<void> Function(String title, List<(DateTime, DateTime)> occurrences, List<String> sharedGroupIds)? onAddBatch;
   final DateTime? initialDate;
+  final List<Group> availableGroups;
 
   const AddWorkScheduleSheet({
     super.key,
     required this.onAdd,
+    this.onAddBatch,
     this.initialDate,
+    this.availableGroups = const [],
   });
 
   @override
@@ -33,6 +39,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   bool _busy = false;
   String _error = '';
   int _created = 0;
+  List<String> _sharedGroupIds = [];
 
   static const _presets = [
     (label: '1W', days: 7),
@@ -141,16 +148,11 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     if (date != null && mounted) setState(() { _until = date; _presetDays = null; });
   }
 
-  Future<TimeOfDay?> _pickTime(TimeOfDay initial) => showTimePicker(
-    context: context,
-    initialTime: initial,
-    builder: (ctx, child) => Theme(
-      data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _kWorkColor)),
-      child: child!,
-    ),
-  );
+  Future<TimeOfDay?> _pickTime(TimeOfDay initial) =>
+      showKalendrTimePicker(context, initial, accentColor: _kWorkColor);
 
   Future<void> _submit() async {
+    if (_busy) return;
     if (_name.text.trim().isEmpty) { setState(() => _error = 'Name is required'); return; }
     if (_selectedDays.isEmpty) { setState(() => _error = 'Select at least one day'); return; }
     final occurrences = _generateOccurrences();
@@ -158,13 +160,21 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     setState(() { _busy = true; _error = ''; _created = 0; });
     try {
       final title = _name.text.trim();
-      for (final (s, e) in occurrences) {
-        await widget.onAdd(title, null, s, e, false);
-        if (mounted) setState(() => _created++);
+      if (widget.onAddBatch != null) {
+        await widget.onAddBatch!(title, occurrences, _sharedGroupIds);
+      } else {
+        for (final (s, e) in occurrences) {
+          await widget.onAdd(title, null, s, e, false, _sharedGroupIds);
+          if (mounted) setState(() => _created++);
+        }
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      setState(() { _error = e.toString(); _busy = false; });
+      if (_created > 0) {
+        if (mounted) Navigator.pop(context);
+      } else {
+        setState(() { _error = e.toString(); _busy = false; });
+      }
     }
   }
 
@@ -364,9 +374,39 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                 style: GoogleFonts.nunito(fontSize: 12, color: _kWorkColor, fontWeight: FontWeight.w600)),
           ],
 
+          if (widget.availableGroups.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('Visible to', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+            const SizedBox(height: 8),
+            ...widget.availableGroups.map((g) {
+              final isShared = _sharedGroupIds.contains(g.id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
+                  child: Row(children: [
+                    Icon(Icons.group_rounded, size: 18, color: _kWorkColor),
+                    const SizedBox(width: 10),
+                    Text(g.name, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w600, color: KalendrTheme.text(context))),
+                    const Spacer(),
+                    Switch(
+                      value: isShared,
+                      activeColor: _kWorkColor,
+                      onChanged: (v) => setState(() {
+                        if (v) _sharedGroupIds.add(g.id);
+                        else _sharedGroupIds.remove(g.id);
+                      }),
+                    ),
+                  ]),
+                ),
+              );
+            }),
+          ],
+
           if (_error.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(_error, style: const TextStyle(color: kPrimary, fontSize: 13)),
+            Text(_error, style: const TextStyle(color: _kWorkColor, fontSize: 13)),
           ],
           const SizedBox(height: 20),
 

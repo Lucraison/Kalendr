@@ -16,7 +16,6 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
   ));
   runApp(
     ChangeNotifierProvider(
@@ -104,6 +103,7 @@ class _MainNavState extends State<_MainNav> {
     ];
 
     return Scaffold(
+      backgroundColor: KalendrTheme.surface(context),
       body: IndexedStack(index: _index, children: screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

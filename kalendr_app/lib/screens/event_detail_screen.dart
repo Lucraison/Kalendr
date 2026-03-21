@@ -12,20 +12,24 @@ import 'add_event_sheet.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final CalendarEvent event;
-  final Group group;
+  final Group? group;
   final Color color;
   final String? creatorPicPath;
   final VoidCallback? onDeleted;
   final VoidCallback? onUpdated;
+  final List<CalendarEvent>? similarEvents;
+  final List<Group> availableGroups;
 
   const EventDetailScreen({
     super.key,
     required this.event,
-    required this.group,
+    this.group,
     required this.color,
     this.creatorPicPath,
     this.onDeleted,
     this.onUpdated,
+    this.similarEvents,
+    this.availableGroups = const [],
   });
 
   @override
@@ -36,13 +40,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   List<Reaction> _reactions = [];
   List<EventRsvp> _rsvps = [];
   List<EventComment> _comments = [];
+  Map<String, List<Reaction>> _groupedReactions = {};
   bool _reactionsLoaded = false;
   bool _rsvpsLoaded = false;
   bool _commentsLoaded = false;
   final _commentCtrl = TextEditingController();
   bool _postingComment = false;
 
-  static const _quickEmojis = ['👍', '❤️', '😂', '😮', '🎉', '🔥'];
+  static const _quickEmojis = ['👍', '❤️', '😂', '😮', '🎉', '🔥', '😡'];
 
   @override
   void initState() {
@@ -58,10 +63,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     super.dispose();
   }
 
+  Map<String, List<Reaction>> _buildGrouped(List<Reaction> reactions) {
+    final map = <String, List<Reaction>>{};
+    for (final r in reactions) {
+      map.putIfAbsent(r.emoji, () => []).add(r);
+    }
+    return map;
+  }
+
   Future<void> _loadReactions() async {
     try {
       final r = await context.read<AppProvider>().api.getReactions(widget.event.id);
-      if (mounted) setState(() { _reactions = r; _reactionsLoaded = true; });
+      if (mounted) setState(() { _reactions = r; _groupedReactions = _buildGrouped(r); _reactionsLoaded = true; });
     } catch (_) {
       if (mounted) setState(() => _reactionsLoaded = true);
     }
@@ -114,6 +127,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       setState(() {
         _reactions.removeWhere((r) => r.userId == myId && r.emoji == emoji);
         if (result != null) _reactions.add(result);
+        _groupedReactions = _buildGrouped(_reactions);
       });
     } catch (_) {}
   }
@@ -138,12 +152,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } catch (_) {}
   }
 
-  Map<String, List<Reaction>> get _grouped {
-    final map = <String, List<Reaction>>{};
-    for (final r in _reactions) {
-      map.putIfAbsent(r.emoji, () => []).add(r);
+
+  Future<void> _toggleGroupShare(String groupId) async {
+    final e = widget.event;
+    final current = List<String>.from(e.sharedGroupIds);
+    if (current.contains(groupId)) {
+      current.remove(groupId);
+    } else {
+      current.add(groupId);
     }
-    return map;
+    try {
+      final updated = await context.read<AppProvider>().api.updateEvent(
+        e.id, e.title, e.description, e.startTime, e.endTime, e.isAllDay,
+        color: e.color, sharedGroupIds: current,
+      );
+      if (!mounted) return;
+      setState(() => e.sharedGroupIds = List<String>.from(updated.sharedGroupIds));
+      widget.onUpdated?.call();
+    } catch (err) {
+      if (mounted) showSnack(context, err.toString(), color: Colors.red.shade400);
+    }
   }
 
   void _showEditSheet() {
@@ -159,16 +187,58 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         initialStart: e.startTime,
         initialEnd: e.endTime,
         initialAllDay: e.isAllDay,
-        onAdd: (title, desc, start, end, allDay) async {
-          final updated = await context.read<AppProvider>().api
-              .updateEvent(e.id, title, desc, start, end, allDay);
+        initialColor: e.color,
+        initialSharedGroupIds: e.sharedGroupIds,
+        groupId: e.groupId,
+        availableGroups: e.groupId == null ? widget.availableGroups : null,
+        onAdd: (title, desc, start, end, allDay, color, sharedGroupIds) async {
+          final api = context.read<AppProvider>().api;
+          final updated = await api.updateEvent(e.id, title, desc, start, end, allDay,
+              color: color, sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
           e.title = updated.title;
           e.description = updated.description;
           e.startTime = updated.startTime;
           e.endTime = updated.endTime;
           e.isAllDay = updated.isAllDay;
+          e.color = updated.color;
           if (mounted) setState(() {});
           widget.onUpdated?.call();
+
+          // Ask about applying to all events with same title
+          if (!mounted) return;
+          final applyAll = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text('Update all "${e.title}" events?',
+                  style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+              content: Text(
+                'Apply this time change to all "${e.title}" events?',
+                style: GoogleFonts.nunito(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Just this one', style: GoogleFonts.nunito()),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Update all', style: GoogleFonts.nunito(
+                      color: widget.color, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          );
+          if (applyAll != true || !mounted) return;
+          final durationMinutes = end.difference(start).inMinutes;
+          final seriesCount = await api.updateSeries(
+            title, e.groupId, start.hour, start.minute, durationMinutes, allDay,
+            color: color, description: desc,
+            sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds,
+          );
+          widget.onUpdated?.call();
+          if (mounted) showSnack(context, 'Updated $seriesCount event${seriesCount == 1 ? '' : 's'}',
+              color: const Color(0xFF06D6A0));
         },
       ),
     );
@@ -183,225 +253,321 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final dateStr = DateFormat('EEE, MMM d, y').format(e.startTime);
     final startStr = e.isAllDay ? 'All day' : DateFormat('HH:mm').format(e.startTime);
     final endStr = e.isAllDay ? '' : DateFormat('HH:mm').format(e.endTime);
-    final grouped = _grouped;
+    final grouped = _groupedReactions;
 
     final myRsvp = _rsvps.where((r) => r.userId == currentUserId).firstOrNull;
     final goingCount = _rsvps.where((r) => r.status == RsvpStatus.going).length;
     final maybeCount = _rsvps.where((r) => r.status == RsvpStatus.maybe).length;
     final declinedCount = _rsvps.where((r) => r.status == RsvpStatus.declined).length;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: KalendrTheme.bg(context),
       body: Column(children: [
+        // ── Header ───────────────────────────────────────────────
         Container(
           color: KalendrTheme.surface(context),
           child: Column(children: [
+            // Nav row
             Padding(
-              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 4, left: 4, right: 8, bottom: 0),
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 4, left: 4, right: 8),
               child: Row(children: [
                 IconButton(
                   icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: KalendrTheme.text(context)),
                   onPressed: () => Navigator.pop(context),
                 ),
-                const Spacer(),
-                if (isOwner) ...[
-                  IconButton(
-                    icon: Icon(Icons.edit_rounded, size: 20, color: widget.color),
-                    onPressed: _showEditSheet,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 22, color: kPrimary),
-                    onPressed: () => _confirmDelete(context),
-                  ),
-                ],
               ]),
             ),
+            // Event info
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+              padding: const EdgeInsets.fromLTRB(20, 2, 20, 20),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: widget.color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
+                // Badge row + creator
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: widget.color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(widget.group != null ? Icons.group_rounded : Icons.person_rounded, size: 12, color: widget.color),
+                      const SizedBox(width: 5),
+                      Text(widget.group?.name ?? 'Personal',
+                          style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: widget.color)),
+                    ]),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.group_rounded, size: 12, color: widget.color),
-                    const SizedBox(width: 5),
-                    Text(widget.group.name, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: widget.color)),
-                  ]),
-                ),
-                const SizedBox(height: 10),
-                Text(e.title, style: GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+                  const Spacer(),
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: widget.color.withOpacity(0.15),
+                    backgroundImage: widget.creatorPicPath != null ? FileImage(File(widget.creatorPicPath!)) : null,
+                    child: widget.creatorPicPath == null
+                        ? Text(e.createdByUsername[0].toUpperCase(),
+                            style: TextStyle(fontSize: 10, color: widget.color, fontWeight: FontWeight.bold))
+                        : null,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(e.createdByUsername,
+                      style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.subtext(context))),
+                ]),
+                const SizedBox(height: 12),
+                Text(e.title,
+                    style: GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+                const SizedBox(height: 5),
+                Row(children: [
+                  Icon(e.isAllDay ? Icons.wb_sunny_outlined : Icons.schedule_rounded,
+                      size: 13, color: widget.color.withOpacity(0.8)),
+                  const SizedBox(width: 5),
+                  Text(
+                    e.isAllDay
+                        ? DateFormat('EEEE, MMMM d, y').format(e.startTime)
+                        : () {
+                            final sameDay = e.startTime.year == e.endTime.year &&
+                                e.startTime.month == e.endTime.month &&
+                                e.startTime.day == e.endTime.day;
+                            final endPart = sameDay
+                                ? DateFormat('HH:mm').format(e.endTime)
+                                : '${DateFormat('HH:mm').format(e.endTime)} (${DateFormat('MMM d').format(e.endTime)})';
+                            return '${DateFormat('EEE, MMM d').format(e.startTime)}  ·  ${DateFormat('HH:mm').format(e.startTime)} – $endPart';
+                          }(),
+                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: widget.color.withOpacity(0.85)),
+                  ),
+                ]),
               ]),
             ),
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [widget.color, widget.color.withOpacity(0.35)]),
-              ),
-            ),
+            // Color bar
+            Container(height: 3, color: widget.color.withOpacity(0.4)),
           ]),
         ),
 
+        // ── Body ─────────────────────────────────────────────────
         Expanded(
           child: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
             behavior: HitTestBehavior.opaque,
-            child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const SizedBox(height: 4),
+            child: Column(children: [
+              Expanded(child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-              _infoCard(children: [
-                _infoRow(Icons.calendar_today_rounded, 'Date', dateStr, widget.color),
-                if (!e.isAllDay) ...[
-                  Divider(height: 1, color: KalendrTheme.divider(context)),
-                  _infoRow(Icons.schedule_rounded, 'Time', '$startStr – $endStr', widget.color),
-                ],
-              ]),
-              const SizedBox(height: 12),
-
-              if (e.description != null && e.description!.isNotEmpty) ...[
-                _infoCard(children: [
-                  Padding(
+                // Description
+                if (e.description != null && e.description!.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(16),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Icon(Icons.notes_rounded, size: 16, color: widget.color),
-                        const SizedBox(width: 10),
-                        Text('Notes', style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.subtext(context), fontWeight: FontWeight.w600)),
-                      ]),
-                      const SizedBox(height: 8),
-                      Text(e.description!, style: GoogleFonts.nunito(fontSize: 15, color: KalendrTheme.text(context), height: 1.5)),
-                    ]),
+                    decoration: BoxDecoration(
+                      color: KalendrTheme.surface(context),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.25 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                    ),
+                    child: Text(e.description!,
+                        style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.text(context), height: 1.55)),
                   ),
-                ]),
-                const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 16),
+                ],
 
-              _infoCard(children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    Icon(Icons.person_rounded, size: 16, color: widget.color),
-                    const SizedBox(width: 10),
-                    Text('Added by', style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.subtext(context), fontWeight: FontWeight.w600)),
-                    const Spacer(),
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundColor: widget.color.withOpacity(0.15),
-                      backgroundImage: widget.creatorPicPath != null ? FileImage(File(widget.creatorPicPath!)) : null,
-                      child: widget.creatorPicPath == null
-                          ? Text(e.createdByUsername[0].toUpperCase(),
-                              style: TextStyle(fontSize: 11, color: widget.color, fontWeight: FontWeight.bold))
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(e.createdByUsername, style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
-                  ]),
-                ),
-              ]),
-              const SizedBox(height: 24),
+                // Visible to (personal events only, owner only)
+                if (widget.group == null && isOwner && widget.availableGroups.isNotEmpty) ...[
+                  _sectionHeader('Visible to'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: widget.availableGroups.map((g) {
+                      final shared = e.sharedGroupIds.contains(g.id);
+                      final gc = groupColorFor(g.id);
+                      return GestureDetector(
+                        onTap: () => _toggleGroupShare(g.id),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: shared ? gc.withOpacity(0.12) : KalendrTheme.surface(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: shared ? gc.withOpacity(0.5) : KalendrTheme.divider(context)),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(shared ? Icons.visibility_rounded : Icons.visibility_off_outlined,
+                                size: 14, color: shared ? gc : KalendrTheme.muted(context)),
+                            const SizedBox(width: 6),
+                            Text(g.name, style: GoogleFonts.nunito(
+                              fontSize: 13, fontWeight: FontWeight.w700,
+                              color: shared ? gc : KalendrTheme.muted(context),
+                            )),
+                          ]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
-              // RSVP
-              _sectionHeader('Are you going?'),
-              Row(children: [
-                _rsvpButton('Going', RsvpStatus.going, Icons.check_circle_outline_rounded, const Color(0xFF06D6A0), myRsvp, goingCount),
-                const SizedBox(width: 8),
-                _rsvpButton('Maybe', RsvpStatus.maybe, Icons.help_outline_rounded, const Color(0xFFFFBE0B), myRsvp, maybeCount),
-                const SizedBox(width: 8),
-                _rsvpButton("Can't", RsvpStatus.declined, Icons.cancel_outlined, kPrimary, myRsvp, declinedCount),
-              ]),
-              const SizedBox(height: 24),
-
-              // Reactions
-              _sectionHeader('Reactions'),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                ..._quickEmojis.map((emoji) {
-                  final myReacted = _reactions.any((r) => r.userId == currentUserId && r.emoji == emoji);
-                  return GestureDetector(
-                    onTap: () => _toggleReaction(emoji),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: myReacted ? widget.color.withOpacity(0.12) : KalendrTheme.divider(context),
-                        borderRadius: BorderRadius.circular(20),
-                        border: myReacted ? Border.all(color: widget.color.withOpacity(0.4)) : null,
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(emoji, style: const TextStyle(fontSize: 16)),
-                        if (grouped.containsKey(emoji)) ...[
-                          const SizedBox(width: 5),
-                          Text('${grouped[emoji]!.length}',
-                              style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700,
-                                  color: myReacted ? widget.color : KalendrTheme.subtext(context))),
-                        ],
-                      ]),
-                    ),
-                  );
-                }),
-              ]),
-              const SizedBox(height: 24),
-
-              // Comments
-              _sectionHeader('Comments'),
-
-              if (!_commentsLoaded) ...[
+                // RSVP
+                _sectionHeader('Are you going?'),
                 Row(children: [
-                  Skeleton(width: 32, height: 32, radius: 16),
-                  const SizedBox(width: 10),
-                  Expanded(child: Skeleton(width: double.infinity, height: 36, radius: 10)),
+                  _rsvpButton('Going', RsvpStatus.going, Icons.check_circle_outline_rounded, const Color(0xFF06D6A0), myRsvp, goingCount),
+                  const SizedBox(width: 8),
+                  _rsvpButton('Maybe', RsvpStatus.maybe, Icons.help_outline_rounded, const Color(0xFFFFBE0B), myRsvp, maybeCount),
+                  const SizedBox(width: 8),
+                  _rsvpButton("Can't", RsvpStatus.declined, Icons.cancel_outlined, kPrimary, myRsvp, declinedCount),
                 ]),
-              ] else ...[
-                ..._comments.map((c) => _commentTile(c, currentUserId)),
-                if (_comments.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text('No comments yet. Be the first!',
-                        style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
-                  ),
-              ],
-              const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
-              // Comment input
-              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
-                    child: TextField(
-                      controller: _commentCtrl,
-                      style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.text(context)),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _postComment(),
-                      decoration: InputDecoration(
-                        hintText: 'Add a comment...',
-                        hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                // Reactions
+                _sectionHeader('Reactions'),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: KalendrTheme.surface(context),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.25 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                  ),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.center,
+                    children: _quickEmojis.map((emoji) {
+                      final myReacted = _reactions.any((r) => r.userId == currentUserId && r.emoji == emoji);
+                      final count = grouped[emoji]?.length ?? 0;
+                      return GestureDetector(
+                        onTap: () => _toggleReaction(emoji),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: myReacted ? widget.color.withOpacity(0.12) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: myReacted ? Border.all(color: widget.color.withOpacity(0.3)) : null,
+                          ),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Text(emoji, style: const TextStyle(fontSize: 22)),
+                            if (count > 0) ...[
+                              const SizedBox(height: 2),
+                              Text('$count',
+                                  style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700,
+                                      color: myReacted ? widget.color : KalendrTheme.muted(context))),
+                            ],
+                          ]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Comments
+                _sectionHeader('Comments'),
+
+                if (!_commentsLoaded) ...[
+                  Row(children: [
+                    Skeleton(width: 32, height: 32, radius: 16),
+                    const SizedBox(width: 10),
+                    Expanded(child: Skeleton(width: double.infinity, height: 36, radius: 10)),
+                  ]),
+                ] else ...[
+                  if (_comments.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text('No comments yet. Be the first!',
+                          style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+                    )
+                  else
+                    ..._comments.map((c) => _commentTile(c, currentUserId)),
+                ],
+                const SizedBox(height: 8),
+
+                // Comment input
+                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(color: KalendrTheme.surface(context), borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 6, offset: const Offset(0, 1))],
+                      ),
+                      child: TextField(
+                        controller: _commentCtrl,
+                        style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.text(context)),
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _postComment(),
+                        decoration: InputDecoration(
+                          hintText: 'Add a comment...',
+                          hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _postingComment ? null : _postComment,
-                  child: Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(color: widget.color, borderRadius: BorderRadius.circular(14)),
-                    child: _postingComment
-                        ? const Center(child: SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
-                        : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: _postingComment ? null : _postComment,
+                    child: Container(
+                      width: 46, height: 46,
+                      decoration: BoxDecoration(
+                        color: widget.color,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [BoxShadow(color: widget.color.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 4))],
+                      ),
+                      child: _postingComment
+                          ? const Center(child: SizedBox(width: 18, height: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                          : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                    ),
                   ),
-                ),
+                ]),
               ]),
-              const SizedBox(height: 24),
-            ]),
-          ),
-            ),
+            )),
+
+            // ── Owner action buttons ──────────────────────────────
+            if (isOwner)
+              Container(
+                padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(context).padding.bottom + 12),
+                decoration: BoxDecoration(
+                  color: KalendrTheme.surface(context),
+                  border: Border(top: BorderSide(color: KalendrTheme.divider(context))),
+                ),
+                child: Row(children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _showEditSheet,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: widget.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.edit_rounded, size: 18, color: widget.color),
+                          const SizedBox(width: 8),
+                          Text('Edit', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: widget.color)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _confirmDelete(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red.shade400),
+                          const SizedBox(width: 8),
+                          Text('Delete', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.red.shade400)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+          ]),
         ),
+      ),
       ]),
     );
   }
@@ -492,7 +658,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         onTap: () => _toggleRsvp(status.name),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: active ? color.withOpacity(0.12) : KalendrTheme.surface(context),
             borderRadius: BorderRadius.circular(14),
@@ -515,25 +681,50 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final confirm = await showDialog<bool>(
+    final choice = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Delete event?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-        content: Text('This removes "${widget.event.title}" for everyone.', style: GoogleFonts.nunito()),
+        titlePadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Text('Delete event?', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 22)),
+        content: Text(
+          'Delete just this event, or all "${widget.event.title}" events?',
+          style: GoogleFonts.nunito(fontSize: 16),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
+            onPressed: () => Navigator.pop(context, null),
+            child: Text('Cancel', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.subtext(context))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'one'),
+            child: Text('Just this one', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.text(context))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'all'),
+            child: Text('Delete all', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.red)),
           ),
         ],
       ),
     );
-    if (confirm != true || !context.mounted) return;
-    await context.read<AppProvider>().api.deleteEvent(widget.group.id, widget.event.id);
-    widget.onDeleted?.call();
-    if (context.mounted) Navigator.pop(context);
+    if (choice == null || !context.mounted) return;
+    final api = context.read<AppProvider>().api;
+    if (choice == 'all') {
+      try {
+        final deleted = await api.deleteEventSeries(widget.event.title, widget.event.groupId);
+        widget.onDeleted?.call();
+        if (context.mounted) Navigator.pop(context);
+        if (context.mounted) showSnack(context, 'Deleted $deleted event${deleted == 1 ? '' : 's'}', color: Colors.red.shade400);
+      } catch (e) {
+        if (context.mounted) showSnack(context, e.toString(), color: Colors.red.shade400);
+      }
+    } else {
+      try { await api.deleteEvent(widget.event.groupId, widget.event.id); } catch (_) {}
+      widget.onDeleted?.call();
+      if (context.mounted) Navigator.pop(context);
+    }
   }
 
   Widget _sectionHeader(String title) {

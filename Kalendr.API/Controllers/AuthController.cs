@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Kalendr.API.Data;
 using Kalendr.API.Models;
+using Kalendr.API.Services;
 using Kalendr.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +14,16 @@ namespace Kalendr.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(AppDbContext db, IConfiguration config) : ControllerBase
+public class AuthController(AppDbContext db, IConfiguration config, IEmailService email) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
     {
         if (await db.Users.AnyAsync(u => u.Email == req.Email))
             return Conflict("Email already in use.");
+
+        if (await db.Users.AnyAsync(u => u.Username == req.Username))
+            return Conflict(new { message = "Username already taken." });
 
         var user = new User
         {
@@ -41,23 +45,6 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Unauthorized("Invalid credentials.");
-
-        return Ok(new AuthResponse(GenerateToken(user), user.Username, user.Id));
-    }
-
-    [HttpPatch("username")]
-    [Authorize]
-    public async Task<ActionResult<AuthResponse>> UpdateUsername([FromBody] UpdateUsernameRequest req)
-    {
-        if (string.IsNullOrWhiteSpace(req.Username) || req.Username.Length < 2)
-            return BadRequest(new { message = "Username must be at least 2 characters." });
-
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var user = await db.Users.FindAsync(userId);
-        if (user is null) return NotFound();
-
-        user.Username = req.Username.Trim();
-        await db.SaveChangesAsync();
 
         return Ok(new AuthResponse(GenerateToken(user), user.Username, user.Id));
     }
@@ -90,6 +77,87 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
         await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync();
 
         return NoContent();
+    }
+
+    [HttpPatch("password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest req)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return NotFound();
+
+        if (!BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { message = "Current password is incorrect." });
+
+        if (req.NewPassword.Length < 6)
+            return BadRequest(new { message = "Password must be at least 6 characters." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        await db.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpPatch("email")]
+    [Authorize]
+    public async Task<IActionResult> ChangeEmail(ChangeEmailRequest req)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return NotFound();
+
+        if (!BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { message = "Current password is incorrect." });
+
+        var normalizedNew = req.NewEmail.Trim().ToLower();
+        if (await db.Users.AnyAsync(u => u.Email == normalizedNew && u.Id != userId))
+            return Conflict("Email already in use.");
+
+        user.Email = normalizedNew;
+        try { await db.SaveChangesAsync(); }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            return Conflict("Email already in use.");
+        }
+        return Ok();
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest req)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
+        // Always return OK to avoid email enumeration
+        if (user is null) return Ok();
+
+        var code = Random.Shared.Next(100000, 999999).ToString();
+        user.PasswordResetCode = BCrypt.Net.BCrypt.HashPassword(code);
+        user.PasswordResetCodeExpiry = DateTime.UtcNow.AddMinutes(15);
+        await db.SaveChangesAsync();
+
+        try { await email.SendPasswordResetCodeAsync(user.Email, user.Username, code); }
+        catch { /* don't leak email errors */ }
+
+        Console.WriteLine($"[DEV] Reset code for {user.Email}: {code}"); // TEMP
+
+        return Ok();
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest req)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
+        if (user is null
+            || user.PasswordResetCode is null
+            || user.PasswordResetCodeExpiry < DateTime.UtcNow
+            || !BCrypt.Net.BCrypt.Verify(req.Code, user.PasswordResetCode))
+            return BadRequest(new { message = "Invalid or expired code." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        user.PasswordResetCode = null;
+        user.PasswordResetCodeExpiry = null;
+        await db.SaveChangesAsync();
+
+        return Ok();
     }
 
     private string GenerateToken(User user)

@@ -3,6 +3,7 @@ using System;
 using Kalendr.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Kalendr.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260321004134_AddUsernameUnique")]
+    partial class AddUsernameUnique
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.3");
@@ -21,9 +24,6 @@ namespace Kalendr.API.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Color")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("CreatedByUserId")
@@ -88,21 +88,6 @@ namespace Kalendr.API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Comments");
-                });
-
-            modelBuilder.Entity("Kalendr.API.Models.EventGroupShare", b =>
-                {
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("EventId", "GroupId");
-
-                    b.HasIndex("GroupId");
-
-                    b.ToTable("EventGroupShares");
                 });
 
             modelBuilder.Entity("Kalendr.API.Models.EventReaction", b =>
@@ -300,25 +285,6 @@ namespace Kalendr.API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Kalendr.API.Models.EventGroupShare", b =>
-                {
-                    b.HasOne("Kalendr.API.Models.CalendarEvent", "Event")
-                        .WithMany("SharedWith")
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Kalendr.API.Models.Group", "Group")
-                        .WithMany()
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-
-                    b.Navigation("Group");
-                });
-
             modelBuilder.Entity("Kalendr.API.Models.EventReaction", b =>
                 {
                     b.HasOne("Kalendr.API.Models.CalendarEvent", "Event")
@@ -385,11 +351,6 @@ namespace Kalendr.API.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Kalendr.API.Models.CalendarEvent", b =>
-                {
-                    b.Navigation("SharedWith");
                 });
 
             modelBuilder.Entity("Kalendr.API.Models.Group", b =>

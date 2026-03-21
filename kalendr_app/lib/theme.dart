@@ -11,7 +11,22 @@ void showSnack(BuildContext context, String message, {Color? color, Duration dur
   ));
 }
 
-const kPrimary = Color(0xFFFF6B6B);
+const kPrimary = Color(0xFF0D9488);
+
+// Pre-built TextStyles — reuse these instead of calling GoogleFonts.nunito() inline
+class KalendrText {
+  static final h1 = GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800);
+  static final h2 = GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800);
+  static final h3 = GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800);
+  static final title = GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700);
+  static final body = GoogleFonts.nunito(fontSize: 14);
+  static final bodyBold = GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700);
+  static final small = GoogleFonts.nunito(fontSize: 13);
+  static final smallBold = GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700);
+  static final caption = GoogleFonts.nunito(fontSize: 12);
+  static final captionBold = GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700);
+  static final label = GoogleFonts.nunito(fontSize: 11);
+}
 
 const kGroupColors = [
   Color(0xFFFF6B6B), Color(0xFF4ECDC4), Color(0xFFFFBE0B),

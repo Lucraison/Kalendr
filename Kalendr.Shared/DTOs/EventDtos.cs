@@ -4,12 +4,14 @@ public record ReactionDto(Guid Id, Guid UserId, string Username, string Emoji);
 public record AddReactionRequest(string Emoji);
 
 public record CreateEventRequest(
-    Guid GroupId,
+    Guid? GroupId,
     string Title,
     string? Description,
     DateTime StartTime,
     DateTime EndTime,
-    bool IsWorkHours
+    bool IsWorkHours,
+    string? Color = null,
+    List<Guid>? SharedGroupIds = null
 );
 
 public record UpdateEventRequest(
@@ -17,12 +19,14 @@ public record UpdateEventRequest(
     string? Description,
     DateTime StartTime,
     DateTime EndTime,
-    bool IsWorkHours
+    bool IsWorkHours,
+    string? Color = null,
+    List<Guid>? SharedGroupIds = null
 );
 
 public record EventDto(
     Guid Id,
-    Guid GroupId,
+    Guid? GroupId,
     Guid CreatedByUserId,
     string CreatedByUsername,
     string UserColor,
@@ -30,7 +34,31 @@ public record EventDto(
     string? Description,
     DateTime StartTime,
     DateTime EndTime,
-    bool IsWorkHours
+    bool IsWorkHours,
+    string? Color,
+    List<Guid> SharedGroupIds
+);
+
+public record BatchCreateEventRequest(List<CreateEventRequest> Events);
+
+// Update all events with the same title+owner — keeps each event's date, applies new time
+public record UpdateSeriesRequest(
+    string Title,
+    Guid? GroupId,
+    int StartHour,
+    int StartMinute,
+    int DurationMinutes,
+    bool IsAllDay,
+    string? Color,
+    string? Description,
+    List<Guid>? SharedGroupIds
+);
+
+public record PatchEventMetadataRequest(
+    string Title,
+    string? Description,
+    string? Color,
+    List<Guid>? SharedGroupIds
 );
 
 public record RsvpDto(Guid UserId, string Username, string Status);

@@ -30,6 +30,7 @@ class AuthState {
     userId = prefs.getString(_keyUserId);
     username = prefs.getString(_keyUsername);
     email = prefs.getString(_keyEmail);
+    email = email?.toLowerCase();
     profilePicPath = prefs.getString(_keyProfilePic);
     if (token != null) api.setToken(token!);
   }
@@ -51,6 +52,12 @@ class AuthState {
     username = name;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUsername, name);
+  }
+
+  Future<void> saveEmail(String newEmail) async {
+    email = newEmail.toLowerCase();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyEmail, newEmail.toLowerCase());
   }
 
   Future<void> saveProfilePic(String path) async {

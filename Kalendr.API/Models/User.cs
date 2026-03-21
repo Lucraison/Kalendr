@@ -7,6 +7,9 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
 
+    public string? PasswordResetCode { get; set; }
+    public DateTime? PasswordResetCodeExpiry { get; set; }
+
     public ICollection<GroupMember> GroupMemberships { get; set; } = [];
     public ICollection<CalendarEvent> Events { get; set; } = [];
 }

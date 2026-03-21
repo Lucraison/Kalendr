@@ -4,10 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/auth_state.dart';
+import '../services/hub_service.dart';
 
 class AppProvider extends ChangeNotifier {
   final ApiService api = ApiService();
   final AuthState auth = AuthState();
+  final HubService hub = HubService();
 
   bool _initialized = false;
   bool get initialized => _initialized;
@@ -22,9 +24,12 @@ class AppProvider extends ChangeNotifier {
   bool get notificationsEnabled => _notificationsEnabled;
 
   Timer? _notifTimer;
+  SharedPreferences? _prefs;
+
+  Future<SharedPreferences> _getPrefs() async => _prefs ??= await SharedPreferences.getInstance();
 
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final saved = prefs.getString('themeMode');
     if (saved == 'light') _themeMode = ThemeMode.light;
     else if (saved == 'dark') _themeMode = ThemeMode.dark;
@@ -33,7 +38,18 @@ class AppProvider extends ChangeNotifier {
     await auth.load(api);
     _initialized = true;
     notifyListeners();
-    if (auth.isLoggedIn) _startPolling();
+    if (auth.isLoggedIn) {
+      _startPolling();
+      _connectHub();
+    }
+  }
+
+  Future<void> _connectHub() async {
+    try {
+      final groups = await api.getGroups();
+      final groupIds = groups.map((g) => g.id).toList();
+      await hub.connect(auth.token!, groupIds);
+    } catch (_) {}
   }
 
   void _startPolling() {
@@ -45,7 +61,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setNotificationsEnabled(bool enabled) async {
     _notificationsEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setBool('notificationsEnabled', enabled);
     if (enabled) {
       _startPolling();
@@ -76,7 +92,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString('themeMode', mode.name);
     notifyListeners();
   }
@@ -86,6 +102,7 @@ class AppProvider extends ChangeNotifier {
     await auth.save(r, api, email: email);
     notifyListeners();
     _startPolling();
+    _connectHub();
   }
 
   Future<void> register(String username, String email, String password) async {
@@ -95,17 +112,14 @@ class AppProvider extends ChangeNotifier {
     _startPolling();
   }
 
-  Future<void> updateUsername(String username) async {
-    final r = await api.updateUsername(username);
-    await auth.saveUsername(r.username);
-    notifyListeners();
-  }
+  Future<void> joinHubGroup(String groupId) => hub.joinGroup(groupId);
 
   void refresh() => notifyListeners();
 
   Future<void> logout() async {
     _notifTimer?.cancel();
     _unreadCount = 0;
+    await hub.disconnect();
     await auth.clear(api);
     notifyListeners();
   }
@@ -113,6 +127,7 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _notifTimer?.cancel();
+    hub.dispose();
     super.dispose();
   }
 }

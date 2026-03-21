@@ -1,6 +1,7 @@
 using System.Text;
 using Kalendr.API.Data;
 using Kalendr.API.Hubs;
+using Kalendr.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -42,6 +43,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 

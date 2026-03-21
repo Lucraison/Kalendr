@@ -11,12 +11,21 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  static const String _base = 'https://kalendr.nherrera.dev';
+  static const String _base = bool.fromEnvironment('dart.vm.product')
+      ? 'https://kalendr.nherrera.dev'
+      : 'http://10.0.2.2:5115';
 
   String? _token;
 
   void setToken(String token) => _token = token;
   void clearToken() => _token = null;
+
+  // Format as naive local ISO (no Z, no offset) so the server stores wall-clock time
+  static String iso(DateTime dt) {
+    final d = dt.toLocal();
+    String p(int n) => n.toString().padLeft(2, '0');
+    return '${d.year.toString().padLeft(4, '0')}-${p(d.month)}-${p(d.day)}T${p(d.hour)}:${p(d.minute)}:00';
+  }
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
@@ -33,14 +42,14 @@ class ApiService {
       String msg;
       if (res.statusCode == 401) {
         msg = 'Wrong email or password.';
-      } else if (res.statusCode == 409) {
-        msg = 'Email already in use.';
       } else {
         msg = 'Error ${res.statusCode}';
         try {
           final body = jsonDecode(res.body);
           msg = body['message'] ?? body['title'] ?? msg;
-        } catch (_) {}
+        } catch (_) {
+          if (res.statusCode == 409) msg = 'Already in use.';
+        }
       }
       throw ApiException(msg);
     } on ApiException {
@@ -80,44 +89,104 @@ class ApiService {
 
   Future<List<CalendarEvent>> getEvents(String groupId, {DateTime? from, DateTime? to}) {
     final params = <String, String>{};
-    if (from != null) params['from'] = from.toUtc().toIso8601String();
-    if (to != null) params['to'] = to.toUtc().toIso8601String();
+    if (from != null) params['from'] = iso(from);
+    if (to != null) params['to'] = iso(to);
     final uri = Uri.parse('$_base/api/events/group/$groupId')
         .replace(queryParameters: params.isEmpty ? null : params);
     return _handle(() => http.get(uri, headers: _headers),
         (j) => (j as List).map((e) => CalendarEvent.fromJson(e)).toList());
   }
 
-  Future<CalendarEvent> createEvent(String groupId, String title, String? description,
-      DateTime startTime, DateTime endTime, bool isAllDay) =>
+  Future<List<CalendarEvent>> getPersonalEvents({DateTime? from, DateTime? to}) {
+    final params = <String, String>{};
+    if (from != null) params['from'] = iso(from);
+    if (to != null) params['to'] = iso(to);
+    final uri = Uri.parse('$_base/api/events/personal')
+        .replace(queryParameters: params.isEmpty ? null : params);
+    return _handle(() => http.get(uri, headers: _headers),
+        (j) => (j as List).map((e) => CalendarEvent.fromJson(e)).toList());
+  }
+
+  Future<CalendarEvent> createEvent(String? groupId, String title, String? description,
+      DateTime startTime, DateTime endTime, bool isAllDay, {String? color, List<String>? sharedGroupIds}) =>
       _handle(() => http.post(Uri.parse('$_base/api/events'),
           headers: _headers,
           body: jsonEncode({
             'groupId': groupId,
             'title': title,
             'description': description,
-            'startTime': startTime.toUtc().toIso8601String(),
-            'endTime': endTime.toUtc().toIso8601String(),
+            'startTime': iso(startTime),
+            'endTime': iso(endTime),
             'isWorkHours': isAllDay,
+            'color': color,
+            'sharedGroupIds': sharedGroupIds,
           })),
           (j) => CalendarEvent.fromJson(j));
 
+  Future<List<CalendarEvent>> createEventsBatch(
+      String? groupId, List<Map<String, dynamic>> occurrences) =>
+      _handle(
+        () => http.post(Uri.parse('$_base/api/events/batch'),
+            headers: _headers,
+            body: jsonEncode({'events': occurrences})),
+        (j) => (j as List).map((e) => CalendarEvent.fromJson(e)).toList(),
+      );
+
   Future<CalendarEvent> updateEvent(String eventId, String title, String? description,
-      DateTime startTime, DateTime endTime, bool isAllDay) =>
+      DateTime startTime, DateTime endTime, bool isAllDay, {String? color, List<String>? sharedGroupIds}) =>
       _handle(() => http.put(Uri.parse('$_base/api/events/$eventId'),
           headers: _headers,
           body: jsonEncode({
             'title': title,
             'description': description,
-            'startTime': startTime.toUtc().toIso8601String(),
-            'endTime': endTime.toUtc().toIso8601String(),
+            'startTime': iso(startTime),
+            'endTime': iso(endTime),
             'isWorkHours': isAllDay,
+            'color': color,
+            'sharedGroupIds': sharedGroupIds,
           })),
           (j) => CalendarEvent.fromJson(j));
 
-  Future<void> deleteEvent(String groupId, String eventId) =>
+  Future<int> updateSeries(String title, String? groupId, int startHour, int startMinute,
+      int durationMinutes, bool isAllDay, {String? color, String? description, List<String>? sharedGroupIds}) =>
+      _handle(() => http.post(Uri.parse('$_base/api/events/update-series'),
+          headers: _headers,
+          body: jsonEncode({
+            'title': title,
+            'groupId': groupId,
+            'startHour': startHour,
+            'startMinute': startMinute,
+            'durationMinutes': durationMinutes,
+            'isAllDay': isAllDay,
+            'color': color,
+            'description': description,
+            'sharedGroupIds': sharedGroupIds,
+          })),
+          (j) => (j['updated'] as int?) ?? 0);
+
+  Future<void> patchEventMetadata(String eventId, String title, String? description,
+      {String? color, List<String>? sharedGroupIds}) =>
+      _handle(() => http.patch(Uri.parse('$_base/api/events/$eventId/metadata'),
+          headers: _headers,
+          body: jsonEncode({
+            'title': title,
+            'description': description,
+            'color': color,
+            'sharedGroupIds': sharedGroupIds,
+          })),
+          (_) => null);
+
+  Future<void> deleteEvent(String? groupId, String eventId) =>
       _handle(() => http.delete(Uri.parse('$_base/api/events/$eventId'), headers: _headers),
           (_) => null);
+
+  Future<int> deleteEventSeries(String title, String? groupId) {
+    final params = <String, String>{'title': title};
+    if (groupId != null) params['groupId'] = groupId;
+    final uri = Uri.parse('$_base/api/events/delete-series').replace(queryParameters: params);
+    return _handle(() => http.delete(uri, headers: _headers),
+        (j) => (j['deleted'] as int?) ?? 0);
+  }
 
   Future<List<EventRsvp>> getRsvps(String eventId) =>
       _handle(() => http.get(Uri.parse('$_base/api/events/$eventId/rsvps'), headers: _headers),
@@ -186,10 +255,25 @@ class ApiService {
       _handle(() => http.delete(Uri.parse('$_base/api/events/comments/$commentId'), headers: _headers),
           (_) => null);
 
-  Future<AuthResponse> updateUsername(String username) =>
-      _handle(() => http.patch(Uri.parse('$_base/api/auth/username'),
-          headers: _headers, body: jsonEncode({'username': username})),
-          (j) => AuthResponse.fromJson(j));
+  Future<void> changePassword(String currentPassword, String newPassword) =>
+      _handle(() => http.patch(Uri.parse('$_base/api/auth/password'),
+          headers: _headers, body: jsonEncode({'currentPassword': currentPassword, 'newPassword': newPassword})),
+          (_) => null);
+
+  Future<void> changeEmail(String currentPassword, String newEmail) =>
+      _handle(() => http.patch(Uri.parse('$_base/api/auth/email'),
+          headers: _headers, body: jsonEncode({'currentPassword': currentPassword, 'newEmail': newEmail})),
+          (_) => null);
+
+  Future<void> forgotPassword(String email) =>
+      _handle(() => http.post(Uri.parse('$_base/api/auth/forgot-password'),
+          headers: _headers, body: jsonEncode({'email': email})),
+          (_) => null);
+
+  Future<void> resetPassword(String email, String code, String newPassword) =>
+      _handle(() => http.post(Uri.parse('$_base/api/auth/reset-password'),
+          headers: _headers, body: jsonEncode({'email': email, 'code': code, 'newPassword': newPassword})),
+          (_) => null);
 
   // Account
   Future<void> deleteAccount() =>
