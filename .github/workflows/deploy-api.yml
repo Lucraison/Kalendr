@@ -15,7 +15,7 @@ jobs:
           username: root
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /opt/kalendr
+            cd /opt/Kalendr
             git pull
             cd Kalendr.API
             ~/.dotnet/dotnet publish -c Release -o /opt/kalendr/publish
