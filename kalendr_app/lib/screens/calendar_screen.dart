@@ -87,6 +87,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _eventsByDay.forEach((_, list) => list.removeWhere((x) => x.event.id == eventId));
       });
     }));
+
+    _hubSubs.add(hub.onSeriesDeleted.listen((recurrenceId) {
+      if (!mounted) return;
+      setState(() {
+        _eventsByDay.forEach((_, list) => list.removeWhere((x) => x.event.recurrenceId == recurrenceId));
+      });
+    }));
   }
 
   @override
@@ -172,14 +179,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
         api.getPersonalEvents(from: from, to: to),
       ]);
       if (!mounted) return;
+      // Deduplicate by event ID — a shared personal event can appear in multiple
+      // group queries AND the personal query, so we track seen IDs and skip dupes.
+      final seen = <String>{};
       final newEntries = <String, List<_EventWithGroup>>{};
       for (int i = 0; i < _groups.length; i++) {
         for (final e in results[i]) {
-          newEntries.putIfAbsent(_dayKey(e.startTime), () => []).add(_EventWithGroup(e, _groups[i]));
+          if (seen.add(e.id)) {
+            newEntries.putIfAbsent(_dayKey(e.startTime), () => []).add(_EventWithGroup(e, _groups[i]));
+          }
         }
       }
       for (final e in results[_groups.length]) {
-        newEntries.putIfAbsent(_dayKey(e.startTime), () => []).add(_EventWithGroup(e, null));
+        if (seen.add(e.id)) {
+          newEntries.putIfAbsent(_dayKey(e.startTime), () => []).add(_EventWithGroup(e, null));
+        }
       }
       setState(() => _eventsByDay.addAll(newEntries));
     } catch (_) {
@@ -352,8 +366,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 final api = context.read<AppProvider>().api;
                 final e = await api.createEvent(group?.id, title, desc, start, end, true,
                     color: '#3B82F6', sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
-                final key = _dayKey(e.startTime);
-                if (mounted) setState(() => _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, group)));
+                if (!mounted) return;
+                if (group == null) {
+                  final key = _dayKey(e.startTime);
+                  setState(() => _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, null)));
+                }
               },
               onAddBatch: (title, occurrences, sharedGroupIds) async {
                 final api = context.read<AppProvider>().api;
@@ -369,12 +386,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 }).toList();
                 final events = await api.createEventsBatch(group?.id, payload);
                 if (!mounted) return;
-                setState(() {
-                  for (final e in events) {
-                    final key = _dayKey(e.startTime);
-                    _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, group));
-                  }
-                });
+                if (group == null) {
+                  setState(() {
+                    for (final e in events) {
+                      final key = _dayKey(e.startTime);
+                      _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, null));
+                    }
+                  });
+                }
               },
             )
           : AddEventSheet(
@@ -385,8 +404,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 final api = context.read<AppProvider>().api;
                 final e = await api.createEvent(group?.id, title, desc, start, end, allDay,
                     color: color, sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
-                final key = _dayKey(e.startTime);
-                if (mounted) setState(() => _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, group)));
+                if (!mounted) return;
+                // Group events: SignalR will deliver the event — skip direct add to avoid
+                // the race where both paths add the same event (duplicate).
+                // Personal events (no group, no SignalR): add directly.
+                if (group == null) {
+                  final key = _dayKey(e.startTime);
+                  setState(() => _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, null)));
+                }
               },
               onAddBatch: (title, desc, occurrences, allDay, color, sharedGroupIds) async {
                 final api = context.read<AppProvider>().api;
@@ -402,12 +427,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 }).toList();
                 final events = await api.createEventsBatch(group?.id, payload);
                 if (!mounted) return;
-                setState(() {
-                  for (final e in events) {
-                    final key = _dayKey(e.startTime);
-                    _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, group));
-                  }
-                });
+                // Group events: delivered via SignalR — skip direct add.
+                // Personal events shared with groups: no SignalR, add directly.
+                if (group == null) {
+                  setState(() {
+                    for (final e in events) {
+                      final key = _dayKey(e.startTime);
+                      _eventsByDay.putIfAbsent(key, () => []).add(_EventWithGroup(e, null));
+                    }
+                  });
+                }
               },
             ),
     );

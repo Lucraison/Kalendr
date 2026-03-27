@@ -11,7 +11,8 @@ public record CreateEventRequest(
     DateTime EndTime,
     bool IsWorkHours,
     string? Color = null,
-    List<Guid>? SharedGroupIds = null
+    List<Guid>? SharedGroupIds = null,
+    Guid? RecurrenceId = null
 );
 
 public record UpdateEventRequest(
@@ -34,9 +35,10 @@ public record EventDto(
     string? Description,
     DateTime StartTime,
     DateTime EndTime,
-    bool IsWorkHours,
+    bool IsAllDay,       // serializes as "isAllDay" — matches Flutter model
     string? Color,
-    List<Guid> SharedGroupIds
+    List<Guid> SharedGroupIds,
+    Guid? RecurrenceId = null
 );
 
 public record BatchCreateEventRequest(List<CreateEventRequest> Events);
@@ -48,10 +50,20 @@ public record UpdateSeriesRequest(
     int StartHour,
     int StartMinute,
     int DurationMinutes,
-    bool IsAllDay,
+    bool IsWorkHours,
     string? Color,
     string? Description,
     List<Guid>? SharedGroupIds
+);
+
+public record UpdateRecurrenceSeriesRequest(
+    string Title,
+    string? Description,
+    string? Color,
+    List<Guid>? SharedGroupIds,
+    int? StartHour,
+    int? StartMinute,
+    int? DurationMinutes
 );
 
 public record PatchEventMetadataRequest(

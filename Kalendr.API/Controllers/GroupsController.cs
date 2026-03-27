@@ -81,7 +81,7 @@ public class GroupsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(g => g.Id == id);
 
         if (group is null) return NotFound();
-        if (!group.Members.Any(m => m.UserId == CurrentUserId)) return Forbid();
+        if (!group.Members.Any(m => m.UserId == CurrentUserId && m.IsOwner)) return Forbid();
 
         group.Name = req.Name;
         await db.SaveChangesAsync();

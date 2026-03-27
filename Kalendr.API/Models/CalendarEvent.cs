@@ -17,4 +17,6 @@ public class CalendarEvent
 
     public string? Color { get; set; }
     public ICollection<EventGroupShare> SharedWith { get; set; } = [];
+
+    public Guid? RecurrenceId { get; set; }
 }

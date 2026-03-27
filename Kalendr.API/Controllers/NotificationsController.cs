@@ -22,13 +22,22 @@ public class NotificationsController(AppDbContext db) : ControllerBase
             .Where(n => n.UserId == CurrentUserId)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)
-            .Select(n => new
-            {
-                n.Id, n.Message, n.EventId, n.IsRead, n.CreatedAt,
-                GroupId = n.EventId != null
-                    ? db.Events.Where(e => e.Id == n.EventId).Select(e => (Guid?)e.GroupId).FirstOrDefault()
-                    : null
-            })
+            .GroupJoin(
+                db.Events,
+                n => n.EventId,
+                e => (Guid?)e.Id,
+                (n, events) => new { Notification = n, Events = events })
+            .SelectMany(
+                x => x.Events.DefaultIfEmpty(),
+                (x, e) => new
+                {
+                    x.Notification.Id,
+                    x.Notification.Message,
+                    x.Notification.EventId,
+                    x.Notification.IsRead,
+                    x.Notification.CreatedAt,
+                    GroupId = e != null ? e.GroupId : (Guid?)null
+                })
             .ToListAsync();
 
         return Ok(notifications.Select(n =>

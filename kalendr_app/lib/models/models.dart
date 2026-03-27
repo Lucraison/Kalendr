@@ -146,6 +146,7 @@ class CalendarEvent {
   final String? groupId;
   String? color;
   List<String> sharedGroupIds;
+  final String? recurrenceId;
 
   CalendarEvent({
     required this.id,
@@ -160,6 +161,7 @@ class CalendarEvent {
     this.groupId,
     this.color,
     this.sharedGroupIds = const [],
+    this.recurrenceId,
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> j) => CalendarEvent(
@@ -175,5 +177,6 @@ class CalendarEvent {
         groupId: j['groupId']?.toString(),
         color: j['color'],
         sharedGroupIds: (j['sharedGroupIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        recurrenceId: j['recurrenceId']?.toString(),
       );
 }

@@ -81,6 +81,8 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
     {
         if (!req.IsWorkHours && req.EndTime <= req.StartTime)
             return BadRequest(new { message = "End time must be after start time." });
+        if (req.IsWorkHours && req.EndTime != req.StartTime && req.EndTime < req.StartTime)
+            return BadRequest(new { message = "End time cannot be before start time." });
 
         if (req.GroupId.HasValue)
         {
@@ -176,7 +178,12 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         }
 
         var createdBy = await db.Users.FindAsync(CurrentUserId);
+        if (createdBy is null) return Unauthorized();
         var events = new List<CalendarEvent>();
+
+        // All events in the batch share one RecurrenceId — use the one from the first event
+        // if provided, otherwise generate a fresh GUID so the series can be managed as a unit.
+        var recurrenceId = req.Events[0].RecurrenceId ?? Guid.NewGuid();
 
         foreach (var r in req.Events)
         {
@@ -190,6 +197,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
                 GroupId = r.GroupId,
                 CreatedByUserId = CurrentUserId,
                 Color = r.Color,
+                RecurrenceId = recurrenceId,
             };
             db.Events.Add(ev);
             events.Add(ev);
@@ -278,6 +286,8 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         if (ev.CreatedByUserId != CurrentUserId) return Forbid();
         if (!req.IsWorkHours && req.EndTime <= req.StartTime)
             return BadRequest(new { message = "End time must be after start time." });
+        if (req.IsWorkHours && req.EndTime != req.StartTime && req.EndTime < req.StartTime)
+            return BadRequest(new { message = "End time cannot be before start time." });
 
         ev.Title = req.Title;
         ev.Description = req.Description;
@@ -548,9 +558,74 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         return Ok(new { deleted = events.Count });
     }
 
+    [HttpPut("series/{recurrenceId}")]
+    public async Task<IActionResult> UpdateRecurrenceSeries(Guid recurrenceId, UpdateRecurrenceSeriesRequest req)
+    {
+        var events = await db.Events
+            .Include(e => e.SharedWith)
+            .Where(e => e.RecurrenceId == recurrenceId && e.CreatedByUserId == CurrentUserId)
+            .ToListAsync();
+
+        if (events.Count == 0) return NotFound();
+
+        foreach (var ev in events)
+        {
+            ev.Title = req.Title;
+            ev.Description = req.Description;
+            ev.Color = req.Color;
+
+            if (req.StartHour.HasValue && req.StartMinute.HasValue && req.DurationMinutes.HasValue)
+            {
+                var newStart = new DateTime(ev.StartTime.Year, ev.StartTime.Month, ev.StartTime.Day,
+                    req.StartHour.Value, req.StartMinute.Value, 0);
+                ev.StartTime = newStart;
+                ev.EndTime = newStart.AddMinutes(req.DurationMinutes.Value);
+            }
+
+            if (req.SharedGroupIds != null && ev.GroupId == null)
+            {
+                db.EventGroupShares.RemoveRange(ev.SharedWith);
+                foreach (var gid in req.SharedGroupIds)
+                {
+                    var isMember = await db.GroupMembers.AnyAsync(gm => gm.GroupId == gid && gm.UserId == CurrentUserId);
+                    if (isMember) db.EventGroupShares.Add(new EventGroupShare { EventId = ev.Id, GroupId = gid });
+                }
+            }
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(new { updated = events.Count });
+    }
+
+    [HttpDelete("series/{recurrenceId}")]
+    public async Task<IActionResult> DeleteRecurrenceSeries(Guid recurrenceId)
+    {
+        var events = await db.Events
+            .Where(e => e.RecurrenceId == recurrenceId && e.CreatedByUserId == CurrentUserId)
+            .ToListAsync();
+
+        if (events.Count == 0) return NotFound();
+
+        var groupId = events[0].GroupId;
+        db.Events.RemoveRange(events);
+        await db.SaveChangesAsync();
+
+        if (groupId.HasValue)
+            await hub.Clients.Group($"group-{groupId}").SendAsync("SeriesDeleted", recurrenceId);
+
+        return Ok(new { deleted = events.Count });
+    }
+
     [HttpPost("update-series")]
     public async Task<IActionResult> UpdateSeries(UpdateSeriesRequest req)
     {
+        if (req.StartHour < 0 || req.StartHour > 23)
+            return BadRequest(new { message = "StartHour must be between 0 and 23." });
+        if (req.StartMinute < 0 || req.StartMinute > 59)
+            return BadRequest(new { message = "StartMinute must be between 0 and 59." });
+        if (!req.IsWorkHours && req.DurationMinutes <= 0)
+            return BadRequest(new { message = "DurationMinutes must be greater than 0." });
+
         var titleLower = req.Title.ToLower();
         var events = await db.Events
             .Include(e => e.SharedWith)
@@ -567,7 +642,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
 
             ev.StartTime = newStart;
             ev.EndTime = newEnd;
-            ev.IsWorkHours = req.IsAllDay;
+            ev.IsWorkHours = req.IsWorkHours;
             ev.Color = req.Color;
             ev.Description = req.Description;
 
@@ -601,7 +676,8 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             e.EndTime,
             e.IsWorkHours,
             e.Color,
-            e.SharedWith.Select(s => s.GroupId).ToList()
+            e.SharedWith.Select(s => s.GroupId).ToList(),
+            e.RecurrenceId
         );
     }
 }

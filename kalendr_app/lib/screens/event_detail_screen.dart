@@ -162,12 +162,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       current.add(groupId);
     }
     try {
-      final updated = await context.read<AppProvider>().api.updateEvent(
-        e.id, e.title, e.description, e.startTime, e.endTime, e.isAllDay,
-        color: e.color, sharedGroupIds: current,
-      );
-      if (!mounted) return;
-      setState(() => e.sharedGroupIds = List<String>.from(updated.sharedGroupIds));
+      final api = context.read<AppProvider>().api;
+      if (e.recurrenceId != null) {
+        await api.updateRecurrenceSeries(
+          e.recurrenceId!,
+          title: e.title,
+          description: e.description,
+          color: e.color,
+          sharedGroupIds: current,
+        );
+        if (!mounted) return;
+        setState(() => e.sharedGroupIds = current);
+      } else {
+        final updated = await api.updateEvent(
+          e.id, e.title, e.description, e.startTime, e.endTime, e.isAllDay,
+          color: e.color, sharedGroupIds: current,
+        );
+        if (!mounted) return;
+        setState(() => e.sharedGroupIds = List<String>.from(updated.sharedGroupIds));
+      }
       widget.onUpdated?.call();
     } catch (err) {
       if (mounted) showSnack(context, err.toString(), color: Colors.red.shade400);
@@ -176,6 +189,68 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   void _showEditSheet() {
     final e = widget.event;
+    if (e.recurrenceId != null) {
+      _askEditScope(e);
+    } else {
+      _openEditSheet(e, editSeries: false);
+    }
+  }
+
+  Future<void> _askEditScope(CalendarEvent e) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: KalendrTheme.surface(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).padding.bottom + 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Center(child: Container(width: 36, height: 4,
+              decoration: BoxDecoration(color: KalendrTheme.divider(context), borderRadius: BorderRadius.circular(2)))),
+          const SizedBox(height: 20),
+          Text('Edit recurring event', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+          const SizedBox(height: 6),
+          Text('This event repeats. What do you want to edit?',
+              style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.subtext(context))),
+          const SizedBox(height: 20),
+          _scopeOption(Icons.event_rounded, 'This event only', 'Changes apply only to ${DateFormat('MMM d').format(e.startTime)}', 'one'),
+          const SizedBox(height: 10),
+          _scopeOption(Icons.event_repeat_rounded, 'All events in series', 'Changes apply to every occurrence', 'series', accent: true),
+        ]),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    _openEditSheet(e, editSeries: choice == 'series');
+  }
+
+  Widget _scopeOption(IconData icon, String title, String subtitle, String value, {bool accent = false}) {
+    final color = accent ? widget.color : KalendrTheme.text(context);
+    return GestureDetector(
+      onTap: () => Navigator.pop(context, value),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: accent ? widget.color.withOpacity(0.08) : KalendrTheme.bg(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent ? widget.color.withOpacity(0.3) : KalendrTheme.divider(context)),
+        ),
+        child: Row(children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+            Text(subtitle, style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.subtext(context))),
+          ])),
+          Icon(Icons.chevron_right_rounded, color: KalendrTheme.muted(context), size: 20),
+        ]),
+      ),
+    );
+  }
+
+  void _openEditSheet(CalendarEvent e, {required bool editSeries}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -193,52 +268,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         availableGroups: e.groupId == null ? widget.availableGroups : null,
         onAdd: (title, desc, start, end, allDay, color, sharedGroupIds) async {
           final api = context.read<AppProvider>().api;
-          final updated = await api.updateEvent(e.id, title, desc, start, end, allDay,
-              color: color, sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
-          e.title = updated.title;
-          e.description = updated.description;
-          e.startTime = updated.startTime;
-          e.endTime = updated.endTime;
-          e.isAllDay = updated.isAllDay;
-          e.color = updated.color;
-          if (mounted) setState(() {});
-          widget.onUpdated?.call();
-
-          // Ask about applying to all events with same title
-          if (!mounted) return;
-          final applyAll = await showDialog<bool>(
-            context: context,
-            builder: (_) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text('Update all "${e.title}" events?',
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-              content: Text(
-                'Apply this time change to all "${e.title}" events?',
-                style: GoogleFonts.nunito(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('Just this one', style: GoogleFonts.nunito()),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Update all', style: GoogleFonts.nunito(
-                      color: widget.color, fontWeight: FontWeight.w700)),
-                ),
-              ],
-            ),
-          );
-          if (applyAll != true || !mounted) return;
-          final durationMinutes = end.difference(start).inMinutes;
-          final seriesCount = await api.updateSeries(
-            title, e.groupId, start.hour, start.minute, durationMinutes, allDay,
-            color: color, description: desc,
-            sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds,
-          );
-          widget.onUpdated?.call();
-          if (mounted) showSnack(context, 'Updated $seriesCount event${seriesCount == 1 ? '' : 's'}',
-              color: const Color(0xFF06D6A0));
+          if (editSeries && e.recurrenceId != null) {
+            final duration = end.difference(start).inMinutes;
+            final count = await api.updateRecurrenceSeries(
+              e.recurrenceId!,
+              title: title,
+              description: desc,
+              color: color,
+              sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds,
+              startHour: start.hour,
+              startMinute: start.minute,
+              durationMinutes: duration,
+            );
+            e.title = title;
+            e.description = desc;
+            e.color = color;
+            e.startTime = DateTime(e.startTime.year, e.startTime.month, e.startTime.day, start.hour, start.minute);
+            e.endTime = e.startTime.add(Duration(minutes: duration));
+            if (mounted) setState(() {});
+            widget.onUpdated?.call();
+            if (mounted) showSnack(context, 'Updated $count event${count == 1 ? '' : 's'}',
+                color: const Color(0xFF06D6A0));
+          } else {
+            final updated = await api.updateEvent(e.id, title, desc, start, end, allDay,
+                color: color, sharedGroupIds: sharedGroupIds.isEmpty ? null : sharedGroupIds);
+            e.title = updated.title;
+            e.description = updated.description;
+            e.startTime = updated.startTime;
+            e.endTime = updated.endTime;
+            e.isAllDay = updated.isAllDay;
+            e.color = updated.color;
+            if (mounted) setState(() {});
+            widget.onUpdated?.call();
+          }
         },
       ),
     );
@@ -681,8 +743,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final e = widget.event;
+    final isSeries = e.recurrenceId != null;
     final choice = await showDialog<String>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titlePadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
@@ -690,7 +755,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         title: Text('Delete event?', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 22)),
         content: Text(
-          'Delete just this event, or all "${widget.event.title}" events?',
+          isSeries
+              ? 'Delete just this occurrence, or the entire "${e.title}" series?'
+              : 'This will permanently delete "${e.title}".',
           style: GoogleFonts.nunito(fontSize: 16),
         ),
         actions: [
@@ -698,30 +765,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             onPressed: () => Navigator.pop(context, null),
             child: Text('Cancel', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.subtext(context))),
           ),
-          TextButton(
+          if (isSeries) TextButton(
             onPressed: () => Navigator.pop(context, 'one'),
             child: Text('Just this one', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.text(context))),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, 'all'),
-            child: Text('Delete all', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.red)),
+            onPressed: () => Navigator.pop(context, isSeries ? 'series' : 'one'),
+            child: Text(isSeries ? 'Delete series' : 'Delete',
+                style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.red)),
           ),
         ],
       ),
     );
     if (choice == null || !context.mounted) return;
     final api = context.read<AppProvider>().api;
-    if (choice == 'all') {
+    if (choice == 'series' && e.recurrenceId != null) {
       try {
-        final deleted = await api.deleteEventSeries(widget.event.title, widget.event.groupId);
+        final deleted = await api.deleteRecurrenceSeries(e.recurrenceId!);
         widget.onDeleted?.call();
         if (context.mounted) Navigator.pop(context);
         if (context.mounted) showSnack(context, 'Deleted $deleted event${deleted == 1 ? '' : 's'}', color: Colors.red.shade400);
-      } catch (e) {
-        if (context.mounted) showSnack(context, e.toString(), color: Colors.red.shade400);
+      } catch (err) {
+        if (context.mounted) showSnack(context, err.toString(), color: Colors.red.shade400);
       }
     } else {
-      try { await api.deleteEvent(widget.event.groupId, widget.event.id); } catch (_) {}
+      try { await api.deleteEvent(e.groupId, e.id); } catch (_) {}
       widget.onDeleted?.call();
       if (context.mounted) Navigator.pop(context);
     }

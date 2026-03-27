@@ -25,6 +25,9 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
         if (await db.Users.AnyAsync(u => u.Username == req.Username))
             return Conflict(new { message = "Username already taken." });
 
+        if (req.Password.Length < 6)
+            return BadRequest(new { message = "Password must be at least 6 characters." });
+
         var user = new User
         {
             Username = req.Username,
@@ -136,8 +139,6 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
 
         try { await email.SendPasswordResetCodeAsync(user.Email, user.Username, code); }
         catch { /* don't leak email errors */ }
-
-        Console.WriteLine($"[DEV] Reset code for {user.Email}: {code}"); // TEMP
 
         return Ok();
     }

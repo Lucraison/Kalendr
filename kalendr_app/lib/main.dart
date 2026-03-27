@@ -14,8 +14,15 @@ import 'screens/onboarding_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Enable edge-to-edge rendering so the app draws behind system bars.
+  // This prevents Samsung (and other Android) nav bars from overlapping
+  // the bottom NavigationBar. Flutter's Scaffold will then use window
+  // insets to automatically pad the NavigationBar above the system bar.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
   ));
   runApp(
     ChangeNotifierProvider(

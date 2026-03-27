@@ -157,7 +157,7 @@ class ApiService {
             'startHour': startHour,
             'startMinute': startMinute,
             'durationMinutes': durationMinutes,
-            'isAllDay': isAllDay,
+            'isWorkHours': isAllDay,
             'color': color,
             'description': description,
             'sharedGroupIds': sharedGroupIds,
@@ -187,6 +187,32 @@ class ApiService {
     return _handle(() => http.delete(uri, headers: _headers),
         (j) => (j['deleted'] as int?) ?? 0);
   }
+
+  Future<int> updateRecurrenceSeries(String recurrenceId, {
+    required String title,
+    String? description,
+    String? color,
+    List<String>? sharedGroupIds,
+    int? startHour,
+    int? startMinute,
+    int? durationMinutes,
+  }) =>
+      _handle(() => http.put(Uri.parse('$_base/api/events/series/$recurrenceId'),
+          headers: _headers,
+          body: jsonEncode({
+            'title': title,
+            'description': description,
+            'color': color,
+            'sharedGroupIds': sharedGroupIds,
+            'startHour': startHour,
+            'startMinute': startMinute,
+            'durationMinutes': durationMinutes,
+          })),
+          (j) => (j['updated'] as int?) ?? 0);
+
+  Future<int> deleteRecurrenceSeries(String recurrenceId) =>
+      _handle(() => http.delete(Uri.parse('$_base/api/events/series/$recurrenceId'), headers: _headers),
+          (j) => (j['deleted'] as int?) ?? 0);
 
   Future<List<EventRsvp>> getRsvps(String eventId) =>
       _handle(() => http.get(Uri.parse('$_base/api/events/$eventId/rsvps'), headers: _headers),

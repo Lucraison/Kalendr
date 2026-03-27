@@ -12,10 +12,12 @@ class HubService {
   final _createdCtrl = StreamController<CalendarEvent>.broadcast();
   final _updatedCtrl = StreamController<CalendarEvent>.broadcast();
   final _deletedCtrl = StreamController<String>.broadcast();
+  final _seriesDeletedCtrl = StreamController<String>.broadcast();
 
   Stream<CalendarEvent> get onEventCreated => _createdCtrl.stream;
   Stream<CalendarEvent> get onEventUpdated => _updatedCtrl.stream;
   Stream<String> get onEventDeleted => _deletedCtrl.stream;
+  Stream<String> get onSeriesDeleted => _seriesDeletedCtrl.stream;
 
   Future<void> connect(String token, List<String> groupIds) async {
     await disconnect();
@@ -53,6 +55,13 @@ class HubService {
       } catch (_) {}
     });
 
+    _connection!.on('SeriesDeleted', (args) {
+      if (args == null || args.isEmpty) return;
+      try {
+        _seriesDeletedCtrl.add(args[0].toString());
+      } catch (_) {}
+    });
+
     await _connection!.start();
 
     for (final gid in groupIds) {
@@ -81,5 +90,6 @@ class HubService {
     _createdCtrl.close();
     _updatedCtrl.close();
     _deletedCtrl.close();
+    _seriesDeletedCtrl.close();
   }
 }
