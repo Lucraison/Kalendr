@@ -189,7 +189,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
       ),
       padding: EdgeInsets.only(
         left: 24, right: 24, top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
       ),
       child: SingleChildScrollView(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
