@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
 
 /// A bottom-sheet calendar picker.
 ///
@@ -202,14 +203,14 @@ class _CalendarPickerSheetState extends State<CalendarPickerSheet> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: widget.accentColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: Text('Today', style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: widget.accentColor)),
+                child: Text(context.s.today, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: widget.accentColor)),
               ),
             ),
             const SizedBox(width: 10),
             Container(width: 10, height: 10,
                 decoration: BoxDecoration(color: widget.accentColor, shape: BoxShape.circle)),
             const SizedBox(width: 5),
-            Text('Selected', style: GoogleFonts.nunito(fontSize: 12, color: widget.accentColor, fontWeight: FontWeight.w600)),
+            Text(context.s.selected, style: GoogleFonts.nunito(fontSize: 12, color: widget.accentColor, fontWeight: FontWeight.w600)),
           ]),
 
           // Start date legend chip
@@ -288,7 +289,7 @@ class _CalendarPickerSheetState extends State<CalendarPickerSheet> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: Text('Confirm ${DateFormat("MMM d").format(_selected)}',
+              child: Text(context.s.confirmDate(DateFormat('MMM d').format(_selected)),
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15)),
             ),
           ),

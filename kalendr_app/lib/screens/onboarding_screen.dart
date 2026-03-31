@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onDone;
@@ -15,25 +16,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
 
-  static const _pages = [
-    _Page(
-      emoji: '🗓️',
-      title: 'Welcome to Kalendr',
-      subtitle: 'A shared calendar for the people that matter — family, friends, teammates.',
-      color: kPrimary,
-    ),
-    _Page(
-      emoji: '👥',
-      title: 'Groups keep you in sync',
-      subtitle: 'Create or join a group, share events, and always know what\'s coming up.',
-      color: Color(0xFF4ECDC4),
-    ),
-    _Page(
-      emoji: '🎉',
-      title: 'React and RSVP',
-      subtitle: 'Let people know you\'re going, react to events, and pick your personal color.',
-      color: Color(0xFF8338EC),
-    ),
+  List<_Page> _buildPages(AppStrings s) => [
+    _Page(emoji: '🗓️', title: s.welcomeToKalendr, subtitle: s.onboardingDesc1, color: kPrimary),
+    _Page(emoji: '👥', title: s.groupsKeepYouInSync, subtitle: s.onboardingDesc2, color: const Color(0xFF4ECDC4)),
+    _Page(emoji: '🎉', title: s.reactAndRsvp, subtitle: s.onboardingDesc3, color: const Color(0xFF8338EC)),
   ];
 
   Future<void> _finish() async {
@@ -50,6 +36,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
+    final pages = _buildPages(s);
     return Scaffold(
       backgroundColor: KalendrTheme.bg(context),
       body: SafeArea(
@@ -57,14 +45,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Expanded(
             child: PageView.builder(
               controller: _controller,
-              itemCount: _pages.length,
+              itemCount: pages.length,
               onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (_, i) => _PageView(page: _pages[i]),
+              itemBuilder: (_, i) => _PageView(page: pages[i]),
             ),
           ),
 
           // Dots
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(_pages.length, (i) {
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(pages.length, (i) {
             final active = i == _page;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -72,7 +60,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               width: active ? 20 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: active ? _pages[_page].color : Colors.grey.shade300,
+                color: active ? pages[_page].color : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(3),
               ),
             );
@@ -83,36 +71,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(children: [
-              if (_page < _pages.length - 1) ...[
+              if (_page < pages.length - 1) ...[
                 TextButton(
                   onPressed: _finish,
-                  child: Text('Skip', style: GoogleFonts.nunito(fontSize: 15, color: KalendrTheme.muted(context))),
+                  child: Text(s.skip, style: GoogleFonts.nunito(fontSize: 15, color: KalendrTheme.muted(context))),
                 ),
                 const Spacer(),
                 ElevatedButton(
                   onPressed: () => _controller.nextPage(
                       duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _pages[_page].color,
+                    backgroundColor: pages[_page].color,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                   ),
-                  child: Text('Next', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15)),
+                  child: Text(s.next, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
               ] else ...[
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _finish,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _pages[_page].color,
+                      backgroundColor: pages[_page].color,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: Text("Let's go!", style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 16)),
+                    child: Text(s.letsGo, style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 16)),
                   ),
                 ),
               ],

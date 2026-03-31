@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/app_provider.dart';
 import 'theme.dart';
+import 'l10n/app_strings.dart';
 import 'screens/login_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/groups_screen.dart';
@@ -37,12 +39,20 @@ class KalendrApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
     return MaterialApp(
       title: 'Kalendr',
       debugShowCheckedModeBanner: false,
       theme: KalendrTheme.light(),
       darkTheme: KalendrTheme.dark(),
-      themeMode: context.watch<AppProvider>().themeMode,
+      themeMode: provider.themeMode,
+      locale: Locale(provider.locale),
+      supportedLocales: AppStrings.supportedLocales,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const _Root(),
     );
   }
@@ -125,12 +135,12 @@ class _MainNavState extends State<_MainNav> {
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined, color: mutedColor),
             selectedIcon: const Icon(Icons.calendar_month_rounded, color: kPrimary),
-            label: 'Calendar',
+            label: context.s.navCalendar,
           ),
           NavigationDestination(
             icon: Icon(Icons.group_outlined, color: mutedColor),
             selectedIcon: const Icon(Icons.group_rounded, color: kPrimary),
-            label: 'Groups',
+            label: context.s.groups,
           ),
           NavigationDestination(
             icon: Badge(
@@ -145,12 +155,12 @@ class _MainNavState extends State<_MainNav> {
               backgroundColor: kPrimary,
               child: const Icon(Icons.notifications_rounded, color: kPrimary),
             ),
-            label: 'Activity',
+            label: context.s.navActivity,
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded, color: mutedColor),
             selectedIcon: const Icon(Icons.person_rounded, color: kPrimary),
-            label: 'Profile',
+            label: context.s.navProfile,
           ),
         ],
       ),

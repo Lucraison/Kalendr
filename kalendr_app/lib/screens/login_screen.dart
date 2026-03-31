@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,46 +17,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isRegister = false;
   bool _busy = false;
   String _error = '';
-  String _lang = 'en';
 
   final _username = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-
-  static const _strings = {
-    'en': {
-      'subtitle': 'Your shared family calendar',
-      'username': 'Username',
-      'email': 'Email',
-      'password': 'Password',
-      'login': 'Log In',
-      'register': 'Create Account',
-      'toggleLogin': 'Already have an account? Log in',
-      'toggleRegister': "Don't have an account? Sign up",
-    },
-    'fr': {
-      'subtitle': 'Votre calendrier familial partagé',
-      'username': 'Nom d\'utilisateur',
-      'email': 'E-mail',
-      'password': 'Mot de passe',
-      'login': 'Se connecter',
-      'register': 'Créer un compte',
-      'toggleLogin': 'Déjà un compte? Connectez-vous',
-      'toggleRegister': 'Pas de compte? Inscrivez-vous',
-    },
-    'es': {
-      'subtitle': 'Tu calendario familiar compartido',
-      'username': 'Usuario',
-      'email': 'Correo',
-      'password': 'Contraseña',
-      'login': 'Iniciar sesión',
-      'register': 'Crear cuenta',
-      'toggleLogin': '¿Ya tienes cuenta? Inicia sesión',
-      'toggleRegister': '¿No tienes cuenta? Regístrate',
-    },
-  };
-
-  String t(String key) => _strings[_lang]![key] ?? key;
 
   Future<void> _submit() async {
     setState(() { _busy = true; _error = ''; });
@@ -73,10 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Widget _langBtn(String code, String label) {
-    final active = _lang == code;
+  Widget _langBtn(String code, String label, AppProvider provider) {
+    final active = provider.locale == code;
     return TextButton(
-      onPressed: () => setState(() => _lang = code),
+      onPressed: () => provider.setLocale(code),
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         minimumSize: Size.zero,
@@ -95,6 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final s = context.s;
     return Scaffold(
       backgroundColor: KalendrTheme.bg(context),
       body: SafeArea(
@@ -119,18 +86,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
               Text('Kalendr', style: GoogleFonts.nunito(fontSize: 36, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
               const SizedBox(height: 4),
-              Text(t('subtitle'), style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.subtext(context))),
+              Text(s.loginSubtitle, style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.subtext(context))),
               const SizedBox(height: 14),
 
               // Language selector
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _langBtn('en', 'EN'),
+                  _langBtn('en', 'EN', provider),
                   Text('|', style: TextStyle(color: Colors.grey.shade300)),
-                  _langBtn('fr', 'FR'),
+                  _langBtn('fr', 'FR', provider),
                   Text('|', style: TextStyle(color: Colors.grey.shade300)),
-                  _langBtn('es', 'ES'),
+                  _langBtn('es', 'ES', provider),
                 ],
               ),
               const SizedBox(height: 28),
@@ -152,12 +119,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     if (_isRegister) ...[
-                      _field(_username, t('username'), Icons.person_outline),
+                      _field(_username, s.username, Icons.person_outline),
                       const SizedBox(height: 12),
                     ],
-                    _field(_email, t('email'), Icons.email_outlined, keyboard: TextInputType.emailAddress),
+                    _field(_email, s.email, Icons.email_outlined, keyboard: TextInputType.emailAddress),
                     const SizedBox(height: 12),
-                    _field(_password, t('password'), Icons.lock_outline, obscure: true),
+                    _field(_password, s.password, Icons.lock_outline, obscure: true),
                     if (_error.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Text(_error, style: const TextStyle(color: kPrimary, fontSize: 13), textAlign: TextAlign.center),
@@ -177,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             elevation: 0,
                           ),
-                          child: Text(_isRegister ? t('register') : t('login'),
+                          child: Text(_isRegister ? s.register : s.login,
                               style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
                         ),
                       ),
@@ -189,14 +156,14 @@ class _LoginScreenState extends State<LoginScreen> {
               TextButton(
                 onPressed: () => setState(() { _isRegister = !_isRegister; _error = ''; }),
                 child: Text(
-                  _isRegister ? t('toggleLogin') : t('toggleRegister'),
+                  _isRegister ? s.toggleLogin : s.toggleRegister,
                   style: GoogleFonts.nunito(color: kPrimary, fontSize: 14),
                 ),
               ),
               if (!_isRegister)
                 TextButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
-                  child: Text('Forgot password?', style: GoogleFonts.nunito(color: KalendrTheme.subtext(context), fontSize: 13)),
+                  child: Text(s.forgotPassword, style: GoogleFonts.nunito(color: KalendrTheme.subtext(context), fontSize: 13)),
                 ),
               const SizedBox(height: 32),
             ],

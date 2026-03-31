@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -34,8 +35,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _sendCode() async {
+    final s = context.s;
     final email = _email.text.trim();
-    if (email.isEmpty) { setState(() => _error = 'Enter your email.'); return; }
+    if (email.isEmpty) { setState(() => _error = s.enterYourEmail); return; }
     setState(() { _busy = true; _error = ''; });
     try {
       await _api.forgotPassword(email);
@@ -46,17 +48,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _resetPassword() async {
+    final s = context.s;
     final code = _code.text.trim();
     final newPass = _newPassword.text;
     final confirm = _confirmPassword.text;
-    if (code.isEmpty) { setState(() => _error = 'Enter the code from your email.'); return; }
-    if (newPass.length < 6) { setState(() => _error = 'Password must be at least 6 characters.'); return; }
-    if (newPass != confirm) { setState(() => _error = 'Passwords do not match.'); return; }
+    if (code.isEmpty) { setState(() => _error = s.enterCodeFromEmail); return; }
+    if (newPass.length < 6) { setState(() => _error = s.passwordAtLeast6); return; }
+    if (newPass != confirm) { setState(() => _error = s.passwordsDoNotMatch); return; }
     setState(() { _busy = true; _error = ''; });
     try {
       await _api.resetPassword(_email.text.trim(), code, newPass);
       if (!mounted) return;
-      showSnack(context, 'Password reset! Please log in.', color: const Color(0xFF06D6A0));
+      showSnack(context, context.s.passwordResetLoginAgain, color: const Color(0xFF06D6A0));
       Navigator.pop(context);
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _busy = false; });
@@ -65,6 +68,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     return Scaffold(
       backgroundColor: KalendrTheme.bg(context),
       body: SafeArea(
@@ -85,14 +89,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 16),
 
             Text(
-              _step == 1 ? 'Forgot password?' : 'Check your email',
+              _step == 1 ? s.forgotPassword : s.checkYourEmail,
               style: GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800, color: KalendrTheme.text(context)),
             ),
             const SizedBox(height: 6),
             Text(
-              _step == 1
-                  ? 'Enter your email and we\'ll send a 6-digit code.'
-                  : 'We sent a code to ${_email.text.trim()}. Enter it below.',
+              _step == 1 ? s.enterEmailForCode : s.sentCodeTo(_email.text.trim()),
               style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.subtext(context)),
               textAlign: TextAlign.center,
             ),
@@ -114,13 +116,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(children: [
                 if (_step == 1) ...[
-                  _field(_email, 'Email', Icons.email_outlined, keyboard: TextInputType.emailAddress),
+                  _field(_email, s.email, Icons.email_outlined, keyboard: TextInputType.emailAddress),
                 ] else ...[
-                  _field(_code, '6-digit code', Icons.pin_rounded, keyboard: TextInputType.number),
+                  _field(_code, s.sixDigitCode, Icons.pin_rounded, keyboard: TextInputType.number),
                   const SizedBox(height: 12),
-                  _field(_newPassword, 'New password', Icons.lock_outline, obscure: true),
+                  _field(_newPassword, s.newPassword, Icons.lock_outline, obscure: true),
                   const SizedBox(height: 12),
-                  _field(_confirmPassword, 'Confirm password', Icons.lock_outline, obscure: true),
+                  _field(_confirmPassword, s.confirmPassword, Icons.lock_outline, obscure: true),
                 ],
                 if (_error.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -142,7 +144,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        _step == 1 ? 'Send code' : 'Reset password',
+                        _step == 1 ? s.sendCode : s.resetPassword,
                         style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -154,12 +156,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             if (_step == 2)
               TextButton(
                 onPressed: () => setState(() { _step = 1; _error = ''; _code.clear(); }),
-                child: Text('Resend code', style: GoogleFonts.nunito(color: kPrimary, fontSize: 14)),
+                child: Text(s.resendCode, style: GoogleFonts.nunito(color: kPrimary, fontSize: 14)),
               ),
 
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Back to login', style: GoogleFonts.nunito(color: KalendrTheme.subtext(context), fontSize: 14)),
+              child: Text(s.backToLogin, style: GoogleFonts.nunito(color: KalendrTheme.subtext(context), fontSize: 14)),
             ),
           ]),
         ),

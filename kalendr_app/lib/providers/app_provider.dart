@@ -23,6 +23,9 @@ class AppProvider extends ChangeNotifier {
   bool _notificationsEnabled = true;
   bool get notificationsEnabled => _notificationsEnabled;
 
+  String _locale = 'en';
+  String get locale => _locale;
+
   Timer? _notifTimer;
   SharedPreferences? _prefs;
 
@@ -34,6 +37,7 @@ class AppProvider extends ChangeNotifier {
     if (saved == 'light') _themeMode = ThemeMode.light;
     else if (saved == 'dark') _themeMode = ThemeMode.dark;
     else _themeMode = ThemeMode.system;
+    _locale = prefs.getString('locale') ?? 'en';
     _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
     await auth.load(api);
     _initialized = true;
@@ -94,6 +98,13 @@ class AppProvider extends ChangeNotifier {
     _themeMode = mode;
     final prefs = await _getPrefs();
     await prefs.setString('themeMode', mode.name);
+    notifyListeners();
+  }
+
+  Future<void> setLocale(String lang) async {
+    _locale = lang;
+    final prefs = await _getPrefs();
+    await prefs.setString('locale', lang);
     notifyListeners();
   }
 

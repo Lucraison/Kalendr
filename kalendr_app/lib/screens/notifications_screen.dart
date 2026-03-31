@@ -7,6 +7,7 @@ import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/slide_route.dart';
+import '../l10n/app_strings.dart';
 import 'event_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -61,7 +62,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         color: _groupColor(notif.groupId!),
       )));
     } catch (_) {
-      if (mounted) showSnack(context, 'Could not load event');
+      if (mounted) showSnack(context, context.s.couldNotLoadEvent);
     }
   }
 
@@ -85,6 +86,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     return Scaffold(
       backgroundColor: KalendrTheme.bg(context),
       body: Column(children: [
@@ -95,7 +97,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             left: 20, right: 20, bottom: 16,
           ),
           child: Row(children: [
-            Text('Notifications', style: GoogleFonts.nunito(fontSize: 24, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+            Text(s.notifications, style: GoogleFonts.nunito(fontSize: 24, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
             const Spacer(),
             if (_notifications.isNotEmpty)
               TextButton(
@@ -105,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     _notifications.clear();
                   });
                 },
-                child: Text('Clear all', style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+                child: Text(s.clearAll, style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
               ),
           ]),
         ),
@@ -122,10 +124,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           Center(child: Column(children: [
                             const Text('🔔', style: TextStyle(fontSize: 48)),
                             const SizedBox(height: 16),
-                            Text("You're all caught up!",
+                            Text(s.youreAllCaughtUp,
                                 style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
                             const SizedBox(height: 4),
-                            Text('New events and comments will appear here.',
+                            Text(s.newEventsWillAppearHere,
                                 style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context))),
                           ])),
                         ])

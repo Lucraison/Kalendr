@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
 
 class TypePickerSheet extends StatelessWidget {
   final VoidCallback onEvent;
@@ -20,20 +21,20 @@ class TypePickerSheet extends StatelessWidget {
         Center(child: Container(width: 36, height: 4,
             decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2)))),
         const SizedBox(height: 16),
-        Text('What are you adding?', style: GoogleFonts.nunito(
+        Text(context.s.whatAreYouAdding, style: GoogleFonts.nunito(
             fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
         const SizedBox(height: 16),
         _typeCard(context,
           icon: Icons.event_rounded, color: const Color(0xFFFF6B6B),
-          title: 'Event',
-          subtitle: 'A one-time or recurring moment — birthday, meeting, trip...',
+          title: context.s.event,
+          subtitle: context.s.eventTypeDesc,
           onTap: onEvent,
         ),
         const SizedBox(height: 10),
         _typeCard(context,
           icon: Icons.work_outline_rounded, color: const Color(0xFF3B82F6),
-          title: 'Work Schedule',
-          subtitle: "Set your recurring work hours so others can see when you're busy",
+          title: context.s.workSchedule,
+          subtitle: context.s.workScheduleDesc,
           onTap: onWorkSchedule,
         ),
       ]),

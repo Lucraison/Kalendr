@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/slide_route.dart';
 import '../widgets/type_picker_sheet.dart';
+import '../l10n/app_strings.dart';
 import 'add_event_sheet.dart';
 import 'add_work_schedule_sheet.dart';
 import 'event_detail_screen.dart';
@@ -96,7 +97,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 16),
                 Row(children: [
-                  Text('Members', style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: KalendrTheme.text(ctx))),
+                  Text(ctx.s.members, style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: KalendrTheme.text(ctx))),
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -128,12 +129,12 @@ class _EventsScreenState extends State<EventsScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                child: Text('Owner', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+                                child: Text(ctx.s.owner, style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
                               ),
                             ],
                           ]),
                           if (isMe)
-                            Text('your color', style: GoogleFonts.nunito(fontSize: 11, color: KalendrTheme.muted(ctx))),
+                            Text(ctx.s.yourColor, style: GoogleFonts.nunito(fontSize: 11, color: KalendrTheme.muted(ctx))),
                         ])),
                         // Owner actions on other members
                         if (amOwner && !isMe) ...[
@@ -146,12 +147,12 @@ class _EventsScreenState extends State<EventsScreen> {
                                   context: context,
                                   builder: (_) => AlertDialog(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                    title: Text('Remove ${m.username}?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-                                    content: Text('They can rejoin with the invite code.', style: GoogleFonts.nunito()),
+                                    title: Text(context.s.removeMemberConfirm(m.username), style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+                                    content: Text(context.s.rejoinWithInviteCode, style: GoogleFonts.nunito()),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
+                                      TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
                                       TextButton(onPressed: () => Navigator.pop(context, true),
-                                          child: Text('Remove', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700))),
+                                          child: Text(context.s.remove, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700))),
                                     ],
                                   ),
                                 );
@@ -171,12 +172,12 @@ class _EventsScreenState extends State<EventsScreen> {
                                   context: context,
                                   builder: (_) => AlertDialog(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                    title: Text('Transfer ownership to ${m.username}?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-                                    content: Text('You will become a regular member.', style: GoogleFonts.nunito()),
+                                    title: Text(context.s.transferOwnershipConfirm(m.username), style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+                                    content: Text(context.s.becomeRegularMember, style: GoogleFonts.nunito()),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
+                                      TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
                                       TextButton(onPressed: () => Navigator.pop(context, true),
-                                          child: Text('Transfer', style: GoogleFonts.nunito(color: color, fontWeight: FontWeight.w700))),
+                                          child: Text(context.s.transfer, style: GoogleFonts.nunito(color: color, fontWeight: FontWeight.w700))),
                                     ],
                                   ),
                                 );
@@ -199,12 +200,12 @@ class _EventsScreenState extends State<EventsScreen> {
                               PopupMenuItem(value: 'transfer', child: Row(children: [
                                 Icon(Icons.swap_horiz_rounded, size: 16, color: color),
                                 const SizedBox(width: 8),
-                                Text('Transfer ownership', style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
+                                Text(ctx.s.transferOwnership, style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
                               ])),
                               PopupMenuItem(value: 'kick', child: Row(children: [
                                 const Icon(Icons.person_remove_rounded, size: 16, color: kPrimary),
                                 const SizedBox(width: 8),
-                                Text('Remove from group', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, color: kPrimary)),
+                                Text(ctx.s.removeFromGroup, style: GoogleFonts.nunito(fontWeight: FontWeight.w600, color: kPrimary)),
                               ])),
                             ],
                           ),
@@ -222,7 +223,7 @@ class _EventsScreenState extends State<EventsScreen> {
                               m.color = hex;
                               setState(() {});
                               setSheet(() {});
-                              if (context.mounted) showSnack(context, 'Color updated!', color: col);
+                              if (context.mounted) showSnack(context, context.s.colorUpdated, color: col);
                             },
                             child: Container(
                               width: 36, height: 36,
@@ -316,7 +317,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       Text(widget.group.name,
                           style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: KalendrTheme.text(context)),
                           overflow: TextOverflow.ellipsis),
-                      Text('${widget.group.members.length} member${widget.group.members.length == 1 ? '' : 's'}',
+                      Text(context.s.memberCount(widget.group.members.length),
                           style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
                     ]),
                   ),
@@ -372,12 +373,12 @@ class _EventsScreenState extends State<EventsScreen> {
         Center(child: Column(children: [
           Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text('Could not load events', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+          Text(context.s.couldNotLoadEventsScreen, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: Text('Retry', style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+            label: Text(context.s.retry, style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
             style: TextButton.styleFrom(foregroundColor: _headerColor()),
           ),
         ])),
@@ -433,9 +434,9 @@ class _EventsScreenState extends State<EventsScreen> {
         Center(child: Column(children: [
           Icon(Icons.calendar_month_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text('No events yet.', style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+          Text(context.s.noEventsYet, style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
           const SizedBox(height: 4),
-          Text('Tap + to add one.', style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context))),
+          Text(context.s.tapPlusToAdd, style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context))),
         ])),
       ]);
     }
@@ -460,7 +461,7 @@ class _EventsScreenState extends State<EventsScreen> {
             Icon(_showPast ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                 size: 16, color: KalendrTheme.muted(context)),
             const SizedBox(width: 6),
-            Text('${past.length} past event${past.length == 1 ? '' : 's'}',
+            Text(context.s.pastEvents(past.length),
                 style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context), fontWeight: FontWeight.w600)),
           ]),
         ),
@@ -480,7 +481,7 @@ class _EventsScreenState extends State<EventsScreen> {
     if (upcoming.isEmpty) {
       items.add(Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: Text('No upcoming events', style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context)))),
+        child: Center(child: Text(context.s.noUpcomingEvents, style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context)))),
       ));
     } else {
       final groups = groupByDate(upcoming);
@@ -499,7 +500,7 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Widget _dateHeader(DateTime dt, {bool isToday = false, bool isPast = false}) {
-    final label = isToday ? 'Today' : DateFormat('EEE, MMM d').format(dt);
+    final label = isToday ? context.s.today : DateFormat('EEE, MMM d').format(dt);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Row(children: [
@@ -545,12 +546,12 @@ class _EventsScreenState extends State<EventsScreen> {
             context: context,
             builder: (_) => AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text('Delete event?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-              content: Text('This removes "${e.title}" for everyone.', style: GoogleFonts.nunito()),
+              title: Text(context.s.deleteEvent, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+              content: Text(context.s.deleteEventTitle(e.title), style: GoogleFonts.nunito()),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
+                TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
                 TextButton(onPressed: () => Navigator.pop(context, true),
-                    child: Text('Delete', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700))),
+                    child: Text(context.s.delete, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700))),
               ],
             ),
           );
@@ -561,16 +562,16 @@ class _EventsScreenState extends State<EventsScreen> {
           context: context,
           builder: (_) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text('Delete event?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-            content: Text('There are ${similar.length + 1} events named "${e.title}". Delete just this one or all of them?',
+            title: Text(context.s.deleteEvent, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+            content: Text(context.s.multipleEventDelete(e.title, similar.length + 1),
                 style: GoogleFonts.nunito()),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, null),
-                  child: Text('Cancel', style: GoogleFonts.nunito())),
+                  child: Text(context.s.cancel, style: GoogleFonts.nunito())),
               TextButton(onPressed: () => Navigator.pop(context, 'one'),
-                  child: Text('Just this one', style: GoogleFonts.nunito(color: kPrimary))),
+                  child: Text(context.s.justThisOne, style: GoogleFonts.nunito(color: kPrimary))),
               TextButton(onPressed: () => Navigator.pop(context, 'all'),
-                  child: Text('All ${similar.length + 1}', style: GoogleFonts.nunito(
+                  child: Text(context.s.allCount(similar.length + 1), style: GoogleFonts.nunito(
                       color: kPrimary, fontWeight: FontWeight.w800))),
             ],
           ),

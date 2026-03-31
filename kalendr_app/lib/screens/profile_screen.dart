@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../widgets/skeleton.dart';
+import '../l10n/app_strings.dart';
 
 class ProfileScreen extends StatefulWidget {
   final void Function(int)? onNavigateToTab;
@@ -41,12 +42,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           ListTile(
             leading: const Icon(Icons.photo_library_rounded, color: kPrimary),
-            title: Text('Choose from gallery', style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
+            title: Text(context.s.chooseFromGallery, style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
             onTap: () => Navigator.pop(context, ImageSource.gallery),
           ),
           ListTile(
             leading: const Icon(Icons.camera_alt_rounded, color: kPrimary),
-            title: Text('Take a photo', style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
+            title: Text(context.s.takeAPhoto, style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
             onTap: () => Navigator.pop(context, ImageSource.camera),
           ),
         ]),
@@ -90,33 +91,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (_) => StatefulBuilder(builder: (ctx, setDialog) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Change password', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        title: Text(context.s.changePassword, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          _dialogField(current, 'Current password', obscure: true),
+          _dialogField(current, context.s.currentPassword, obscure: true),
           const SizedBox(height: 10),
-          _dialogField(next, 'New password', obscure: true),
+          _dialogField(next, context.s.newPassword, obscure: true),
           const SizedBox(height: 10),
-          _dialogField(confirm, 'Confirm new password', obscure: true),
+          _dialogField(confirm, context.s.confirmNewPassword, obscure: true),
           if (error != null) ...[
             const SizedBox(height: 8),
             Text(error!, style: GoogleFonts.nunito(color: kPrimary, fontSize: 13)),
           ],
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.nunito())),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
           TextButton(
             onPressed: () async {
-              if (next.text.length < 6) { setDialog(() => error = 'At least 6 characters'); return; }
-              if (next.text != confirm.text) { setDialog(() => error = 'Passwords do not match'); return; }
+              if (next.text.length < 6) { setDialog(() => error = context.s.atLeast6Characters); return; }
+              if (next.text != confirm.text) { setDialog(() => error = context.s.passwordsDoNotMatch); return; }
               try {
                 await provider.api.changePassword(current.text, next.text);
                 if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) showSnack(context, 'Password updated!', color: const Color(0xFF06D6A0));
+                if (mounted) showSnack(context, context.s.passwordUpdated, color: const Color(0xFF06D6A0));
               } catch (e) {
                 setDialog(() => error = e.toString());
               }
             },
-            child: Text('Save', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
+            child: Text(context.s.save, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
           ),
         ],
       )),
@@ -131,32 +132,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (_) => StatefulBuilder(builder: (ctx, setDialog) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Change email', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        title: Text(context.s.changeEmail, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          _dialogField(newEmail, 'New email', keyboard: TextInputType.emailAddress),
+          _dialogField(newEmail, context.s.newEmail, keyboard: TextInputType.emailAddress),
           const SizedBox(height: 10),
-          _dialogField(password, 'Current password (to confirm)', obscure: true),
+          _dialogField(password, context.s.currentPasswordToConfirm, obscure: true),
           if (error != null) ...[
             const SizedBox(height: 8),
             Text(error!, style: GoogleFonts.nunito(color: kPrimary, fontSize: 13)),
           ],
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.nunito())),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
           TextButton(
             onPressed: () async {
-              if (!newEmail.text.contains('@')) { setDialog(() => error = 'Enter a valid email'); return; }
+              if (!newEmail.text.contains('@')) { setDialog(() => error = context.s.enterValidEmail); return; }
               try {
                 await provider.api.changeEmail(password.text, newEmail.text.trim());
                 await provider.auth.saveEmail(newEmail.text.trim());
                 provider.refresh();
                 if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) showSnack(context, 'Email updated!', color: const Color(0xFF06D6A0));
+                if (mounted) showSnack(context, context.s.emailUpdated, color: const Color(0xFF06D6A0));
               } catch (e) {
                 setDialog(() => error = e.toString());
               }
             },
-            child: Text('Save', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
+            child: Text(context.s.save, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
           ),
         ],
       )),
@@ -293,19 +294,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 )))
               else
                 Row(children: [
-                  Expanded(child: _statCard(Icons.group_rounded, '${_groups.length}', 'Groups', const Color(0xFF4ECDC4),
+                  Expanded(child: _statCard(Icons.group_rounded, '${_groups.length}', context.s.groups, const Color(0xFF4ECDC4),
                       onTap: () => widget.onNavigateToTab?.call(1))),
                   const SizedBox(width: 12),
-                  Expanded(child: _statCard(Icons.calendar_month_rounded, '$_totalEvents', 'Events', kPrimary)),
+                  Expanded(child: _statCard(Icons.calendar_month_rounded, '$_totalEvents', context.s.events, kPrimary)),
                   const SizedBox(width: 12),
                   Expanded(child: _statCard(Icons.upcoming_rounded,
-                      _upcomingEvents == 0 ? '0' : '$_upcomingEvents', 'Upcoming', const Color(0xFF8338EC),
+                      _upcomingEvents == 0 ? '0' : '$_upcomingEvents', context.s.upcoming, const Color(0xFF8338EC),
                       dimmed: _upcomingEvents == 0)),
                 ]),
               const SizedBox(height: 32),
 
               // ── Settings ───────────────────────────────────────────────
-              _sectionLabel('Settings'),
+              _sectionLabel(context.s.settings),
               const SizedBox(height: 10),
               _settingsCard(isDark, context, provider),
               const SizedBox(height: 28),
@@ -313,11 +314,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // ── Your groups ────────────────────────────────────────────
               if (!_loading && _groups.isNotEmpty) ...[
                 Row(children: [
-                  _sectionLabel('Your Groups'),
+                  _sectionLabel(context.s.yourGroups),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => widget.onNavigateToTab?.call(1),
-                    child: Text('See all', style: GoogleFonts.nunito(
+                    child: Text(context.s.seeAll, style: GoogleFonts.nunito(
                         fontSize: 12, fontWeight: FontWeight.w700, color: KalendrTheme.muted(context))),
                   ),
                 ]),
@@ -327,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
 
               // ── Danger zone ────────────────────────────────────────────
-              _sectionLabel('Account'),
+              _sectionLabel(context.s.account),
               const SizedBox(height: 10),
               Container(
                 decoration: BoxDecoration(
@@ -341,16 +342,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context: context,
                       builder: (_) => AlertDialog(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        title: Text('Delete account?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-                        content: Text(
-                          'This permanently deletes your account, all your events, and removes you from all groups. This cannot be undone.',
-                          style: GoogleFonts.nunito(),
-                        ),
+                        title: Text(context.s.deleteAccount, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+                        content: Text(context.s.deleteAccountWarning, style: GoogleFonts.nunito()),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
                           TextButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: Text('Delete', style: GoogleFonts.nunito(color: Colors.red.shade700, fontWeight: FontWeight.w800)),
+                            child: Text(context.s.delete, style: GoogleFonts.nunito(color: Colors.red.shade700, fontWeight: FontWeight.w800)),
                           ),
                         ],
                       ),
@@ -370,9 +368,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
                     child: Icon(Icons.delete_forever_rounded, color: Colors.red.shade400, size: 18),
                   ),
-                  title: Text('Delete account', style: GoogleFonts.nunito(
+                  title: Text(context.s.deleteAccount, style: GoogleFonts.nunito(
                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.red.shade400)),
-                  subtitle: Text('Permanently removes all your data', style: GoogleFonts.nunito(
+                  subtitle: Text(context.s.permanentlyRemovesData, style: GoogleFonts.nunito(
                       fontSize: 11, color: Colors.red.shade300.withOpacity(0.8))),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 ),
@@ -411,6 +409,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _themeToggle(context, provider),
         Divider(height: 1, color: KalendrTheme.divider(context)),
 
+        // Language
+        _languageToggle(context, provider),
+        Divider(height: 1, color: KalendrTheme.divider(context)),
+
         // Notifications toggle
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -424,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(width: 14),
-            Text('Notifications', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+            Text(context.s.notifications, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
             const Spacer(),
             Switch(
               value: provider.notificationsEnabled,
@@ -443,7 +445,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(color: const Color(0xFF06D6A0).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.lock_reset_rounded, color: Color(0xFF06D6A0), size: 18),
           ),
-          title: Text('Change password', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+          title: Text(context.s.changePassword, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
           trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
         ),
@@ -457,7 +459,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(color: const Color(0xFF4ECDC4).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.email_outlined, color: Color(0xFF4ECDC4), size: 18),
           ),
-          title: Text('Change email', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+          title: Text(context.s.changeEmail, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
           trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
         ),
@@ -472,12 +474,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context: context,
                 builder: (_) => AlertDialog(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  title: Text('Log out?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-                  content: Text('You will need to log in again.', style: GoogleFonts.nunito()),
+                  title: Text(context.s.logout, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+                  content: Text(context.s.willNeedLoginAgain, style: GoogleFonts.nunito()),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
                     TextButton(onPressed: () => Navigator.pop(context, true),
-                        child: Text('Log out', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700))),
+                        child: Text(context.s.logout, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700))),
                   ],
                 ),
               );
@@ -488,7 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(color: KalendrTheme.muted(context).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
               child: Icon(Icons.logout_rounded, color: KalendrTheme.muted(context), size: 18),
             ),
-            title: Text('Log out', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+            title: Text(context.s.logout, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
             trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20),
             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           ),
@@ -518,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(width: 12),
           Expanded(child: Text(g.name, style: GoogleFonts.nunito(
               fontSize: 14, fontWeight: FontWeight.w700, color: KalendrTheme.text(context)))),
-          Text('${g.members.length} member${g.members.length == 1 ? '' : 's'}',
+          Text(context.s.memberCount(g.members.length),
               style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
           const SizedBox(width: 6),
           Icon(Icons.chevron_right_rounded, size: 16, color: color),
@@ -539,16 +541,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Icon(Icons.palette_rounded, color: Color(0xFF8338EC), size: 18),
           ),
           const SizedBox(width: 14),
-          Text('Appearance', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+          Text(context.s.appearance, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
         ]),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(20)),
           padding: const EdgeInsets.all(3),
           child: Row(children: [
-            Expanded(child: _themePill(context, provider, ThemeMode.light, Icons.light_mode_rounded, 'Light', mode == ThemeMode.light)),
-            Expanded(child: _themePill(context, provider, ThemeMode.system, Icons.phone_android_rounded, 'System', mode == ThemeMode.system)),
-            Expanded(child: _themePill(context, provider, ThemeMode.dark, Icons.dark_mode_rounded, 'Dark', mode == ThemeMode.dark)),
+            Expanded(child: _themePill(context, provider, ThemeMode.light, Icons.light_mode_rounded, context.s.light, mode == ThemeMode.light)),
+            Expanded(child: _themePill(context, provider, ThemeMode.system, Icons.phone_android_rounded, context.s.system, mode == ThemeMode.system)),
+            Expanded(child: _themePill(context, provider, ThemeMode.dark, Icons.dark_mode_rounded, context.s.dark, mode == ThemeMode.dark)),
           ]),
         ),
       ]),
@@ -575,6 +577,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: active ? const Color(0xFF8338EC) : KalendrTheme.muted(context),
           )),
         ]),
+      ),
+    );
+  }
+
+  Widget _languageToggle(BuildContext context, AppProvider provider) {
+    final locale = provider.locale;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: const Color(0xFF06D6A0).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.language_rounded, color: Color(0xFF06D6A0), size: 18),
+          ),
+          const SizedBox(width: 14),
+          Text(context.s.language, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+        ]),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(20)),
+          padding: const EdgeInsets.all(3),
+          child: Row(children: [
+            Expanded(child: _langPill(context, provider, 'en', 'EN', locale == 'en')),
+            Expanded(child: _langPill(context, provider, 'fr', 'FR', locale == 'fr')),
+            Expanded(child: _langPill(context, provider, 'es', 'ES', locale == 'es')),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _langPill(BuildContext context, AppProvider provider, String code, String label, bool active) {
+    return GestureDetector(
+      onTap: () => provider.setLocale(code),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? KalendrTheme.surface(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4)] : null,
+        ),
+        child: Center(
+          child: Text(label, style: GoogleFonts.nunito(
+            fontSize: 13,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? const Color(0xFF06D6A0) : KalendrTheme.muted(context),
+          )),
+        ),
       ),
     );
   }

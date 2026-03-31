@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
+import '../l10n/app_strings.dart';
 import '../theme.dart';
 import '../widgets/skeleton.dart';
 import 'add_event_sheet.dart';
@@ -142,11 +143,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _rsvps.removeWhere((r) => r.userId == myId);
         if (result != null) _rsvps.add(result);
       });
+      final s = context.s;
       final removed = result == null;
-      final label = removed ? 'RSVP removed' : const {
-        'going': 'Marked as Going ✓',
-        'maybe': 'Marked as Maybe',
-        'declined': "Marked as Can't go",
+      final label = removed ? 'RSVP removed' : {
+        'going': s.going,
+        'maybe': s.maybe,
+        'declined': s.cantGo,
       }[status] ?? 'RSVP updated';
       showSnack(context, label, color: removed ? Colors.grey.shade600 : const Color(0xFF06D6A0));
     } catch (_) {}
@@ -197,6 +199,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _askEditScope(CalendarEvent e) async {
+    final s = context.s;
     final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -210,14 +213,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           Center(child: Container(width: 36, height: 4,
               decoration: BoxDecoration(color: KalendrTheme.divider(context), borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 20),
-          Text('Edit recurring event', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+          Text(s.editRecurringEvent, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
           const SizedBox(height: 6),
-          Text('This event repeats. What do you want to edit?',
+          Text(s.eventRepeatsEditChoice,
               style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.subtext(context))),
           const SizedBox(height: 20),
-          _scopeOption(Icons.event_rounded, 'This event only', 'Changes apply only to ${DateFormat('MMM d').format(e.startTime)}', 'one'),
+          _scopeOption(Icons.event_rounded, s.thisEventOnly, s.thisEventOnlyDesc(DateFormat('MMM d').format(e.startTime)), 'one'),
           const SizedBox(height: 10),
-          _scopeOption(Icons.event_repeat_rounded, 'All events in series', 'Changes apply to every occurrence', 'series', accent: true),
+          _scopeOption(Icons.event_repeat_rounded, s.allEventsInSeries, s.allEventsInSeriesDesc, 'series', accent: true),
         ]),
       ),
     );
@@ -287,7 +290,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             e.endTime = e.startTime.add(Duration(minutes: duration));
             if (mounted) setState(() {});
             widget.onUpdated?.call();
-            if (mounted) showSnack(context, 'Updated $count event${count == 1 ? '' : 's'}',
+            if (mounted) showSnack(context, context.s.updatedCount(count),
                 color: const Color(0xFF06D6A0));
           } else {
             final updated = await api.updateEvent(e.id, title, desc, start, end, allDay,
@@ -308,12 +311,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final currentUserId = context.read<AppProvider>().auth.userId ?? '';
     final isOwner = widget.event.createdByUserId == currentUserId;
 
     final e = widget.event;
     final dateStr = DateFormat('EEE, MMM d, y').format(e.startTime);
-    final startStr = e.isAllDay ? 'All day' : DateFormat('HH:mm').format(e.startTime);
+    final startStr = e.isAllDay ? s.allDay : DateFormat('HH:mm').format(e.startTime);
     final endStr = e.isAllDay ? '' : DateFormat('HH:mm').format(e.endTime);
     final grouped = _groupedReactions;
 
@@ -356,7 +360,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(widget.group != null ? Icons.group_rounded : Icons.person_rounded, size: 12, color: widget.color),
                       const SizedBox(width: 5),
-                      Text(widget.group?.name ?? 'Personal',
+                      Text(widget.group?.name ?? s.personal,
                           style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: widget.color)),
                     ]),
                   ),
@@ -432,7 +436,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
                 // Visible to (personal events only, owner only)
                 if (widget.group == null && isOwner && widget.availableGroups.isNotEmpty) ...[
-                  _sectionHeader('Visible to'),
+                  _sectionHeader(s.visibleTo),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -466,18 +470,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
 
                 // RSVP
-                _sectionHeader('Are you going?'),
+                _sectionHeader(s.areYouGoing),
                 Row(children: [
-                  _rsvpButton('Going', RsvpStatus.going, Icons.check_circle_outline_rounded, const Color(0xFF06D6A0), myRsvp, goingCount),
+                  _rsvpButton(s.going, RsvpStatus.going, Icons.check_circle_outline_rounded, const Color(0xFF06D6A0), myRsvp, goingCount),
                   const SizedBox(width: 8),
-                  _rsvpButton('Maybe', RsvpStatus.maybe, Icons.help_outline_rounded, const Color(0xFFFFBE0B), myRsvp, maybeCount),
+                  _rsvpButton(s.maybe, RsvpStatus.maybe, Icons.help_outline_rounded, const Color(0xFFFFBE0B), myRsvp, maybeCount),
                   const SizedBox(width: 8),
-                  _rsvpButton("Can't", RsvpStatus.declined, Icons.cancel_outlined, kPrimary, myRsvp, declinedCount),
+                  _rsvpButton(s.cantGo, RsvpStatus.declined, Icons.cancel_outlined, kPrimary, myRsvp, declinedCount),
                 ]),
                 const SizedBox(height: 20),
 
                 // Reactions
-                _sectionHeader('Reactions'),
+                _sectionHeader(s.reactions),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
@@ -519,7 +523,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 const SizedBox(height: 20),
 
                 // Comments
-                _sectionHeader('Comments'),
+                _sectionHeader(s.comments),
 
                 if (!_commentsLoaded) ...[
                   Row(children: [
@@ -531,7 +535,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   if (_comments.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: Text('No comments yet. Be the first!',
+                      child: Text(s.noCommentsYet,
                           style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
                     )
                   else
@@ -553,7 +557,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) => _postComment(),
                         decoration: InputDecoration(
-                          hintText: 'Add a comment...',
+                          hintText: s.addCommentPlaceholder,
                           hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -602,7 +606,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.edit_rounded, size: 18, color: widget.color),
                           const SizedBox(width: 8),
-                          Text('Edit', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: widget.color)),
+                          Text(s.edit, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: widget.color)),
                         ]),
                       ),
                     ),
@@ -620,7 +624,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red.shade400),
                           const SizedBox(width: 8),
-                          Text('Delete', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.red.shade400)),
+                          Text(s.delete, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.red.shade400)),
                         ]),
                       ),
                     ),
@@ -658,7 +662,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     decoration: BoxDecoration(color: kPrimary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.delete_outline_rounded, color: kPrimary, size: 18),
                   ),
-                  title: Text('Delete comment', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: kPrimary)),
+                  title: Text(context.s.deleteComment, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: kPrimary)),
                   onTap: () { Navigator.pop(context); _deleteComment(comment); },
                 ),
               ]),
@@ -743,6 +747,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final s = context.s;
     final e = widget.event;
     final isSeries = e.recurrenceId != null;
     final choice = await showDialog<String>(
@@ -753,25 +758,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         titlePadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
         contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        title: Text('Delete event?', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 22)),
+        title: Text(s.deleteEvent, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 22)),
         content: Text(
           isSeries
-              ? 'Delete just this occurrence, or the entire "${e.title}" series?'
-              : 'This will permanently delete "${e.title}".',
+              ? s.deleteOccurrenceOrSeries(e.title)
+              : s.deleteEventPermanent.replaceAll('{title}', e.title),
           style: GoogleFonts.nunito(fontSize: 16),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, null),
-            child: Text('Cancel', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.subtext(context))),
+            child: Text(s.cancel, style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.subtext(context))),
           ),
           if (isSeries) TextButton(
             onPressed: () => Navigator.pop(context, 'one'),
-            child: Text('Just this one', style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.text(context))),
+            child: Text(s.justThisOne, style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 15, color: KalendrTheme.text(context))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, isSeries ? 'series' : 'one'),
-            child: Text(isSeries ? 'Delete series' : 'Delete',
+            child: Text(isSeries ? s.deleteSeries : s.delete,
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.red)),
           ),
         ],
@@ -784,7 +789,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         final deleted = await api.deleteRecurrenceSeries(e.recurrenceId!);
         widget.onDeleted?.call();
         if (context.mounted) Navigator.pop(context);
-        if (context.mounted) showSnack(context, 'Deleted $deleted event${deleted == 1 ? '' : 's'}', color: Colors.red.shade400);
+        if (context.mounted) showSnack(context, context.s.deletedCount(deleted), color: Colors.red.shade400);
       } catch (err) {
         if (context.mounted) showSnack(context, err.toString(), color: Colors.red.shade400);
       }

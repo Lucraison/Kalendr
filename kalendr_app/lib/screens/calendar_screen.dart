@@ -12,6 +12,7 @@ import '../theme.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/slide_route.dart';
 import '../widgets/type_picker_sheet.dart';
+import '../l10n/app_strings.dart';
 import 'add_event_sheet.dart';
 import 'add_work_schedule_sheet.dart';
 import 'event_detail_screen.dart';
@@ -218,12 +219,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return kPrimary;
   }
 
-  String _greeting() {
+  String _greeting(AppStrings s, String name) {
     final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) return 'Good morning';
-    if (hour >= 12 && hour < 18) return 'Good afternoon';
-    if (hour >= 18 && hour < 22) return 'Good evening';
-    return 'Up late';
+    if (hour >= 5 && hour < 12) return s.greetingMorning(name);
+    if (hour >= 12 && hour < 18) return s.greetingAfternoon(name);
+    return s.greetingEvening(name);
   }
 
   void _showFilterSheet() {
@@ -271,9 +271,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Center(child: Container(width: 36, height: 4,
                 decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            Text('Calendars', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(ctx))),
+            Text(ctx.s.calendars, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(ctx))),
             const SizedBox(height: 4),
-            filterTile('personal', 'Personal', Colors.grey, Icons.person_rounded),
+            filterTile('personal', ctx.s.personal, Colors.grey, Icons.person_rounded),
             ..._groups.map((g) => filterTile(g.id, g.name, groupColorFor(g.id), Icons.group_rounded)),
             const SizedBox(height: 8),
           ]),
@@ -313,7 +313,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Center(child: Container(width: 36, height: 4,
               decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 16),
-          Text('Add to...', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+          Text(context.s.addTo, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
           const SizedBox(height: 12),
           if (includePersonal)
             ListTile(
@@ -323,8 +323,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
                 child: const Icon(Icons.person_rounded, color: Colors.grey, size: 18),
               ),
-              title: Text('Personal', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
-              subtitle: Text('Only visible to you', style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
+              title: Text(context.s.personal, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+              subtitle: Text(context.s.onlyVisibleToYou, style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
               onTap: () {
                 Navigator.pop(context);
                 _openAddSheet(null, forWork: forWork);
@@ -340,7 +340,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Icon(Icons.group_rounded, color: color, size: 18),
               ),
               title: Text(g.name, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
-              subtitle: Text('${g.members.length} member${g.members.length == 1 ? '' : 's'}',
+              subtitle: Text(context.s.memberCount(g.members.length),
                   style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
               onTap: () {
                 Navigator.pop(context);
@@ -444,6 +444,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final auth = context.read<AppProvider>().auth;
     final myUserId = auth.userId;
     final allSelected = _eventsForDay(_selectedDay);
@@ -462,7 +463,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 12, left: 20, right: 16, bottom: 16),
             child: Row(children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${_greeting()}, ${auth.username ?? ''}! 👋',
+                Text(_greeting(s, auth.username ?? ''),
                     style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.subtext(context))),
                 const SizedBox(height: 2),
                 Text(DateFormat('EEEE, MMMM d').format(today),
@@ -475,14 +476,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(color: kPrimary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                    child: Text('Today', style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: kPrimary)),
+                    child: Text(s.today, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: kPrimary)),
                   ),
                 )
               else if (todayEvents.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(color: kPrimary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                  child: Text('${todayEvents.length} today',
+                  child: Text(s.eventsToday(todayEvents.length),
                       style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: kPrimary)),
                 ),
               const SizedBox(width: 4),
@@ -632,12 +633,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 20),
                               child: Row(children: [
                                 Text(
-                                  isSameDay(_selectedDay, today) ? 'Today' : DateFormat('EEEE, MMMM d').format(_selectedDay),
+                                  isSameDay(_selectedDay, today) ? s.today : DateFormat('EEEE, MMMM d').format(_selectedDay),
                                   style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: KalendrTheme.text(context)),
                                 ),
                                 const Spacer(),
                                 if (selectedEvents.isNotEmpty)
-                                  Text('${selectedEvents.length} event${selectedEvents.length == 1 ? '' : 's'}',
+                                  Text(s.eventCount(selectedEvents.length),
                                       style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
                               ]),
                             ),
@@ -657,13 +658,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   const SizedBox(height: 10),
                                   Text(
                                     isSameDay(_selectedDay, today)
-                                        ? (_groups.isEmpty ? 'Join a group to see events' : 'Free day!')
-                                        : 'Nothing scheduled',
+                                        ? (_groups.isEmpty ? s.couldNotLoadEvents : s.freeDay)
+                                        : s.nothingScheduled,
                                     style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context)),
                                   ),
                                   if (_groups.isEmpty) ...[
                                     const SizedBox(height: 4),
-                                    Text('Go to Groups to get started', style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+                                    Text(s.goToGroupsToStart, style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
                                   ],
                                 ]),
                               )
@@ -821,12 +822,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey.shade300),
         const SizedBox(height: 16),
-        Text('Could not load events', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+        Text(context.s.couldNotLoadEvents, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
         const SizedBox(height: 8),
         TextButton.icon(
           onPressed: _load,
           icon: const Icon(Icons.refresh_rounded, size: 16),
-          label: Text('Retry', style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+          label: Text(context.s.retry, style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
           style: TextButton.styleFrom(foregroundColor: kPrimary),
         ),
       ]),
@@ -904,7 +905,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Row(children: [
           Icon(Icons.work_outline_rounded, size: 15, color: _kWorkBlue),
           const SizedBox(width: 8),
-          Text('Working today', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: _kWorkBlue)),
+          Text(context.s.workingToday, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: _kWorkBlue)),
           const SizedBox(width: 10),
           Expanded(
             child: Wrap(spacing: 6, runSpacing: 4, children: byUser.entries.map((entry) {
@@ -933,7 +934,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _eventTile(_EventWithGroup ew) {
     final color = _eventColor(ew);
-    final timeStr = ew.event.isAllDay ? 'All day' : DateFormat('HH:mm').format(ew.event.startTime);
+    final timeStr = ew.event.isAllDay ? context.s.allDay : DateFormat('HH:mm').format(ew.event.startTime);
 
     return GestureDetector(
       onTap: () => Navigator.push(context, slideRoute(EventDetailScreen(
@@ -982,7 +983,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                    child: Text(ew.group?.name ?? 'Personal', style: GoogleFonts.nunito(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                    child: Text(ew.group?.name ?? context.s.personal, style: GoogleFonts.nunito(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
                   ),
                 ]),
               ]),

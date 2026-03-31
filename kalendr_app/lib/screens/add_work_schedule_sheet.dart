@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../l10n/app_strings.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import 'add_event_sheet.dart';
@@ -35,21 +36,25 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   final Map<int, ({TimeOfDay start, TimeOfDay end})> _dayHours = {};
   late DateTime _from;
   late DateTime _until;
-  int? _presetDays = 30; // null = custom
+  String? _presetLabel = '1M'; // null = custom
   bool _busy = false;
   String _error = '';
   int _created = 0;
   List<String> _sharedGroupIds = [];
 
-  static const _presets = [
-    (label: '1W', days: 7),
-    (label: '2W', days: 14),
-    (label: '1M', days: 30),
-    (label: '3M', days: 90),
-  ];
+  static const _presets = ['1W', '2W', '1M', '3M'];
 
-  static const _dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static const _weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  DateTime _untilForPreset(String label, DateTime from) {
+    switch (label) {
+      case '1W': return from.add(const Duration(days: 6));   // 7 days inclusive
+      case '2W': return from.add(const Duration(days: 13));  // 14 days inclusive
+      case '1M': return DateTime(from.year, from.month + 1, from.day).subtract(const Duration(days: 1));
+      case '3M': return DateTime(from.year, from.month + 3, from.day).subtract(const Duration(days: 1));
+      default:   return from.add(const Duration(days: 6));
+    }
+  }
+
+  // Weekday labels are loaded from AppStrings at build time via context.s
 
   @override
   void initState() {
@@ -57,7 +62,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     _name = TextEditingController(text: 'Work');
     final base = widget.initialDate ?? DateTime.now();
     _from = DateTime(base.year, base.month, base.day);
-    _until = _from.add(const Duration(days: 30));
+    _until = _untilForPreset('1M', _from);
     for (final d in _selectedDays) {
       _dayHours[d] = (start: _globalStart, end: _globalEnd);
     }
@@ -104,12 +109,13 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   }
 
   Future<void> _pickFrom() async {
+    final s = context.s;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CalendarPickerSheet(
-        title: 'Starting from',
+        title: s.startingFrom,
         initial: _from,
         first: DateTime.now().subtract(const Duration(days: 365)),
         last: DateTime.now().add(const Duration(days: 365 * 5)),
@@ -120,32 +126,33 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
       setState(() {
         _from = date;
         // recalculate end based on active preset
-        if (_presetDays != null) {
-          _until = _from.add(Duration(days: _presetDays!));
+        if (_presetLabel != null) {
+          _until = _untilForPreset(_presetLabel!, _from);
         } else if (_until.isBefore(_from)) {
-          _until = _from.add(const Duration(days: 30));
+          _until = _untilForPreset('1M', _from);
         }
       });
     }
   }
 
   Future<void> _pickCustomUntil() async {
+    final s = context.s;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CalendarPickerSheet(
-        title: 'Repeat until',
+        title: s.repeatUntil,
         initial: _until,
         first: _from,
         last: DateTime.now().add(const Duration(days: 365 * 2)),
         highlightDate: _from,
-        highlightLabel: 'Start',
+        highlightLabel: s.start,
         rangeStart: _from,
         accentColor: _kWorkColor,
       ),
     );
-    if (date != null && mounted) setState(() { _until = date; _presetDays = null; });
+    if (date != null && mounted) setState(() { _until = date; _presetLabel = null; });
   }
 
   Future<TimeOfDay?> _pickTime(TimeOfDay initial) =>
@@ -153,10 +160,11 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
 
   Future<void> _submit() async {
     if (_busy) return;
-    if (_name.text.trim().isEmpty) { setState(() => _error = 'Name is required'); return; }
-    if (_selectedDays.isEmpty) { setState(() => _error = 'Select at least one day'); return; }
+    final s = context.s;
+    if (_name.text.trim().isEmpty) { setState(() => _error = s.nameRequired); return; }
+    if (_selectedDays.isEmpty) { setState(() => _error = s.selectAtLeastOneDay); return; }
     final occurrences = _generateOccurrences();
-    if (occurrences.isEmpty) { setState(() => _error = 'No shifts in selected date range'); return; }
+    if (occurrences.isEmpty) { setState(() => _error = s.noShiftsInRange); return; }
     setState(() { _busy = true; _error = ''; _created = 0; });
     try {
       final title = _name.text.trim();
@@ -182,6 +190,8 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
+    final dayLabels = s.weekdayShort;
     return Container(
       decoration: BoxDecoration(
         color: KalendrTheme.surface(context),
@@ -208,7 +218,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
               child: const Icon(Icons.work_outline_rounded, color: _kWorkColor, size: 18),
             ),
             const SizedBox(width: 12),
-            Text('Work Schedule', style: GoogleFonts.nunito(
+            Text(s.workSchedule, style: GoogleFonts.nunito(
                 fontSize: 22, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
             const Spacer(),
             GestureDetector(
@@ -229,7 +239,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
               controller: _name,
               style: GoogleFonts.nunito(color: KalendrTheme.text(context), fontSize: 15),
               decoration: InputDecoration(
-                hintText: 'Schedule name (e.g. Work)',
+                hintText: s.scheduleNameHint,
                 hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context)),
                 prefixIcon: Icon(Icons.badge_outlined, color: KalendrTheme.muted(context), size: 20),
                 border: InputBorder.none,
@@ -240,7 +250,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
           const SizedBox(height: 14),
 
           // Work days
-          Text('Work days', style: GoogleFonts.nunito(
+          Text(s.workDays, style: GoogleFonts.nunito(
               fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
           const SizedBox(height: 8),
           Row(
@@ -256,7 +266,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                     color: active ? _kWorkColor : KalendrTheme.divider(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Center(child: Text(_dayLabels[wd - 1],
+                  child: Center(child: Text(dayLabels[wd - 1],
                       style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700,
                           color: active ? Colors.white : KalendrTheme.muted(context)))),
                 ),
@@ -266,7 +276,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
           const SizedBox(height: 14),
 
           // Hours
-          _toggleRow(Icons.tune_rounded, 'Same hours every day', _sameHours, (v) {
+          _toggleRow(Icons.tune_rounded, s.sameHoursEveryDay, _sameHours, (v) {
             setState(() { _sameHours = v; if (v) _applyGlobalHours(); });
           }),
           if (_selectedDays.isNotEmpty) ...[
@@ -278,7 +288,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                 child: Row(children: [
                   Icon(Icons.schedule_rounded, size: 16, color: KalendrTheme.muted(context)),
                   const SizedBox(width: 10),
-                  Text('Hours', style: GoogleFonts.nunito(
+                  Text(s.hours, style: GoogleFonts.nunito(
                       fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.subtext(context))),
                   const Spacer(),
                   _timePill(_globalStart, () async {
@@ -301,23 +311,23 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
           const SizedBox(height: 14),
 
           // Date range
-          Text('Date range', style: GoogleFonts.nunito(
+          Text(s.dateRange, style: GoogleFonts.nunito(
               fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
           const SizedBox(height: 8),
-          _dateRow('From', _from, _pickFrom),
+          _dateRow(s.from, _from, _pickFrom, isStart: true),
           const SizedBox(height: 12),
-          Text('Duration', style: GoogleFonts.nunito(
+          Text(s.duration, style: GoogleFonts.nunito(
               fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
           const SizedBox(height: 8),
           Row(children: [
             ..._presets.map((p) {
-              final active = _presetDays == p.days;
+              final active = _presetLabel == p;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
                   onTap: () => setState(() {
-                    _presetDays = p.days;
-                    _until = _from.add(Duration(days: p.days));
+                    _presetLabel = p;
+                    _until = _untilForPreset(p, _from);
                   }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
@@ -329,7 +339,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                         color: active ? _kWorkColor : KalendrTheme.divider(context),
                       ),
                     ),
-                    child: Text(p.label, style: GoogleFonts.nunito(
+                    child: Text(p, style: GoogleFonts.nunito(
                       fontSize: 13, fontWeight: FontWeight.w700,
                       color: active ? Colors.white : KalendrTheme.subtext(context),
                     )),
@@ -343,25 +353,25 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                 decoration: BoxDecoration(
-                  color: _presetDays == null ? _kWorkColor : KalendrTheme.field(context),
+                  color: _presetLabel == null ? _kWorkColor : KalendrTheme.field(context),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: _presetDays == null ? _kWorkColor : KalendrTheme.divider(context),
+                    color: _presetLabel == null ? _kWorkColor : KalendrTheme.divider(context),
                   ),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(
-                    _presetDays == null
+                    _presetLabel == null
                         ? DateFormat('MMM d').format(_until)
-                        : 'Custom',
+                        : s.custom,
                     style: GoogleFonts.nunito(
                       fontSize: 13, fontWeight: FontWeight.w700,
-                      color: _presetDays == null ? Colors.white : KalendrTheme.subtext(context),
+                      color: _presetLabel == null ? Colors.white : KalendrTheme.subtext(context),
                     ),
                   ),
                   const SizedBox(width: 4),
                   Icon(Icons.edit_calendar_rounded, size: 12,
-                      color: _presetDays == null ? Colors.white70 : KalendrTheme.muted(context)),
+                      color: _presetLabel == null ? Colors.white70 : KalendrTheme.muted(context)),
                 ]),
               ),
             ),
@@ -370,13 +380,13 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
           _rangeChip(),
           if (_shiftCount > 0) ...[
             const SizedBox(height: 6),
-            Text('$_shiftCount shift${_shiftCount == 1 ? '' : 's'}',
+            Text(s.shiftCount(_shiftCount),
                 style: GoogleFonts.nunito(fontSize: 12, color: _kWorkColor, fontWeight: FontWeight.w600)),
           ],
 
           if (widget.availableGroups.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text('Visible to', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+            Text(s.visibleTo, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
             const SizedBox(height: 8),
             ...widget.availableGroups.map((g) {
               final isShared = _sharedGroupIds.contains(g.id);
@@ -429,9 +439,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                           style: GoogleFonts.nunito(fontSize: 14, color: Colors.white)),
                     ])
                   : Text(
-                      _shiftCount > 0
-                          ? 'Add $_shiftCount Shift${_shiftCount == 1 ? '' : 's'}'
-                          : 'Add Work Schedule',
+                      _shiftCount > 0 ? s.addShifts(_shiftCount) : s.addWorkSchedule,
                       style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
             ),
@@ -443,13 +451,14 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
 
   Widget _dayHoursRow(int weekday) {
     final schedule = _dayHours[weekday]!;
+    final wdNames = context.s.weekdayNames;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
         child: Row(children: [
-          Text(_weekdayNames[weekday - 1],
+          Text(wdNames[weekday - 1],
               style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context))),
           const Spacer(),
           _timePill(schedule.start, () async {
@@ -496,7 +505,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
       ),
       child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('From', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
+          Text(context.s.from, style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
               color: _kWorkColor.withOpacity(0.7), letterSpacing: 0.5)),
           Text(startFmt, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: _kWorkColor)),
         ])),
@@ -506,10 +515,10 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
             const Icon(Icons.arrow_forward_rounded, size: 14, color: _kWorkColor),
           ]),
           const SizedBox(height: 2),
-          Text('$days days', style: GoogleFonts.nunito(fontSize: 10, color: _kWorkColor.withOpacity(0.6))),
+          Text(context.s.daysCount(days), style: GoogleFonts.nunito(fontSize: 10, color: _kWorkColor.withOpacity(0.6))),
         ]),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('Until', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
+          Text(context.s.until, style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
               color: _kWorkColor.withOpacity(0.7), letterSpacing: 0.5)),
           Text(endFmt, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: _kWorkColor)),
         ])),
@@ -531,14 +540,14 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     );
   }
 
-  Widget _dateRow(String label, DateTime dt, VoidCallback onTap) {
+  Widget _dateRow(String label, DateTime dt, VoidCallback onTap, {bool isStart = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
         child: Row(children: [
-          Icon(label == 'From' ? Icons.flight_takeoff_rounded : Icons.flight_land_rounded,
+          Icon(isStart ? Icons.flight_takeoff_rounded : Icons.flight_land_rounded,
               size: 16, color: KalendrTheme.muted(context)),
           const SizedBox(width: 10),
           Text('$label  ', style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.subtext(context))),

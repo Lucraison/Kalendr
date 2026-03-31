@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../l10n/app_strings.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import 'calendar_picker_sheet.dart';
@@ -80,7 +81,7 @@ class _KalendrTimePickerSheetState extends State<_KalendrTimePickerSheet> {
           ),
         ),
         const SizedBox(height: 20),
-        Text('Select time', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+        Text(context.s.selectTime, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
         const SizedBox(height: 20),
         SizedBox(
           height: wheelH,
@@ -153,7 +154,7 @@ class _KalendrTimePickerSheetState extends State<_KalendrTimePickerSheet> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 0,
             ),
-            child: Text('Confirm  $hh:$mm', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
+            child: Text(context.s.confirmDate('$hh:$mm'), style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
           ),
         ),
       ]),
@@ -229,8 +230,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
     '#F97316', '#06D6A0', '#FFBE0B', '#EF4444',
   ];
 
-  static const _dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static const _weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  // Weekday labels are loaded from AppStrings at build time via context.s
 
   static DateTime _nextHour([DateTime? base]) {
     final d = base ?? DateTime.now();
@@ -311,17 +311,18 @@ class _AddEventSheetState extends State<AddEventSheet> {
   }
 
   Future<void> _pickDateOnly(bool isStart) async {
+    final s = context.s;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CalendarPickerSheet(
-        title: isStart ? 'Starting from' : 'Ending on',
+        title: isStart ? s.startingFrom : s.endingOn,
         initial: isStart ? _start : _end,
         first: DateTime.now().subtract(const Duration(days: 365)),
         last: DateTime.now().add(const Duration(days: 365 * 5)),
         highlightDate: isStart ? null : _start,
-        highlightLabel: isStart ? null : 'Start',
+        highlightLabel: isStart ? null : s.start,
       ),
     );
     if (date == null || !mounted) return;
@@ -336,18 +337,19 @@ class _AddEventSheetState extends State<AddEventSheet> {
   }
 
   Future<void> _pickDatePart(bool isStart) async {
+    final s = context.s;
     final current = isStart ? _start : _end;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CalendarPickerSheet(
-        title: isStart ? 'Start date' : 'End date',
+        title: isStart ? s.startDate : s.endDate,
         initial: current,
         first: DateTime.now().subtract(const Duration(days: 365)),
         last: DateTime.now().add(const Duration(days: 365 * 5)),
         highlightDate: isStart ? null : _start,
-        highlightLabel: isStart ? null : 'Start',
+        highlightLabel: isStart ? null : s.start,
         rangeStart: isStart ? null : _start,
         accentColor: _accent,
       ),
@@ -383,17 +385,18 @@ class _AddEventSheetState extends State<AddEventSheet> {
   }
 
   Future<void> _pickRepeatUntil() async {
+    final s = context.s;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CalendarPickerSheet(
-        title: 'Repeat until',
+        title: s.repeatUntil,
         initial: _repeatUntil,
         first: _start,
         last: DateTime.now().add(const Duration(days: 365 * 2)),
         highlightDate: _start,
-        highlightLabel: 'Start',
+        highlightLabel: s.start,
         rangeStart: _start,
       ),
     );
@@ -401,8 +404,9 @@ class _AddEventSheetState extends State<AddEventSheet> {
   }
 
   Future<void> _submit() async {
-    if (_title.text.trim().isEmpty) { setState(() => _error = 'Title is required'); return; }
-    if (!_allDay && !_end.isAfter(_start)) { setState(() => _error = 'End time must be after start time'); return; }
+    final s = context.s;
+    if (_title.text.trim().isEmpty) { setState(() => _error = s.titleRequired); return; }
+    if (!_allDay && !_end.isAfter(_start)) { setState(() => _error = s.endAfterStart); return; }
     final title = _title.text.trim();
     final desc = _desc.text.trim().isEmpty ? null : _desc.text.trim();
     setState(() { _busy = true; _error = ''; _created = 0; });
@@ -412,25 +416,25 @@ class _AddEventSheetState extends State<AddEventSheet> {
         await widget.onAdd(title, desc, _start, _end, _allDay, _color, _sharedGroupIds);
       } else if (_repeat == EventRepeat.custom) {
         final occurrences = _generateCustomOccurrences();
-        if (occurrences.isEmpty) { setState(() { _error = 'No days selected or no dates in range'; _busy = false; }); return; }
+        if (occurrences.isEmpty) { setState(() { _error = s.noDaysSelected; _busy = false; }); return; }
         if (widget.onAddBatch != null) {
           await widget.onAddBatch!(title, desc, occurrences, false, _color, _sharedGroupIds);
         } else {
-          for (final (s, e) in occurrences) {
-            await widget.onAdd(title, desc, s, e, false, _color, _sharedGroupIds);
+          for (final (st, e) in occurrences) {
+            await widget.onAdd(title, desc, st, e, false, _color, _sharedGroupIds);
             if (mounted) setState(() => _created++);
           }
         }
       } else {
         final dates = _generateDates();
-        if (dates.isEmpty) { setState(() { _error = 'No dates in range'; _busy = false; }); return; }
+        if (dates.isEmpty) { setState(() { _error = s.noDatesInRange; _busy = false; }); return; }
         final duration = _end.difference(_start);
         final occurrences = dates.map((d) => (d, d.add(duration))).toList();
         if (widget.onAddBatch != null) {
           await widget.onAddBatch!(title, desc, occurrences, _allDay, _color, _sharedGroupIds);
         } else {
-          for (final (s, e) in occurrences) {
-            await widget.onAdd(title, desc, s, e, _allDay, _color, _sharedGroupIds);
+          for (final (st, e) in occurrences) {
+            await widget.onAdd(title, desc, st, e, _allDay, _color, _sharedGroupIds);
             if (mounted) setState(() => _created++);
           }
         }
@@ -445,14 +449,17 @@ class _AddEventSheetState extends State<AddEventSheet> {
       ? _generateCustomOccurrences().length
       : _generateDates().length;
 
-  String get _submitLabel {
-    if (widget.isEditing) return 'Save Changes';
-    if (_repeat == EventRepeat.none) return 'Add Event';
-    return 'Add $_totalOccurrences Event${_totalOccurrences == 1 ? '' : 's'}';
+  String _submitLabel(AppStrings s) {
+    if (widget.isEditing) return s.saveChanges;
+    if (_repeat == EventRepeat.none) return s.addEvent;
+    return s.addEvents(_totalOccurrences);
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
+    final dayLabels = s.weekdayShort;
+    final weekdayNames = s.weekdayNames;
     return Container(
       decoration: BoxDecoration(color: KalendrTheme.surface(context), borderRadius: const BorderRadius.vertical(top: Radius.circular(28))),
       padding: EdgeInsets.only(left: 24, right: 24, top: 16, bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24),
@@ -461,7 +468,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
           Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 16),
           Row(children: [
-            Text(widget.isEditing ? 'Edit Event' : 'New Event',
+            Text(widget.isEditing ? s.editEvent : s.newEvent,
                 style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
             const Spacer(),
             GestureDetector(
@@ -474,12 +481,12 @@ class _AddEventSheetState extends State<AddEventSheet> {
             ),
           ]),
           const SizedBox(height: 20),
-          _sheetField(_title, 'Event title', Icons.title_rounded),
+          _sheetField(_title, s.eventTitle, Icons.title_rounded),
           const SizedBox(height: 12),
-          _sheetField(_desc, 'Description (optional)', Icons.notes_rounded),
+          _sheetField(_desc, s.descriptionOptional, Icons.notes_rounded),
           const SizedBox(height: 14),
           if (_repeat != EventRepeat.custom)
-            _toggleRow(Icons.wb_sunny_outlined, 'All day', _allDay, (v) => setState(() => _allDay = v)),
+            _toggleRow(Icons.wb_sunny_outlined, s.allDay, _allDay, (v) => setState(() => _allDay = v)),
           if (_repeat != EventRepeat.custom) const SizedBox(height: 10),
 
           // Color picker and group visibility — only for personal events
@@ -510,7 +517,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
             const SizedBox(height: 8),
             if ((widget.availableGroups ?? []).isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text('Visible to', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+              Text(s.visibleTo, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
               const SizedBox(height: 8),
               ...((widget.availableGroups ?? []).map((g) {
                 final isShared = _sharedGroupIds.contains(g.id);
@@ -544,10 +551,11 @@ class _AddEventSheetState extends State<AddEventSheet> {
           ],
 
           _dateRow(
-            _repeat == EventRepeat.custom ? 'Starting from' : 'Start',
+            _repeat == EventRepeat.custom ? s.startingFrom : s.start,
             _start,
             _repeat == EventRepeat.custom ? () => _pickDateOnly(true) : () => _pickDatePart(true),
             onTimeTap: _allDay ? null : () => _pickTimePart(true),
+            isStart: true,
             dateOnly: _repeat == EventRepeat.custom,
             timeOnly: widget.isEditing && !_allDay,
           ),
@@ -558,7 +566,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
               child: Row(children: [
                 Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange.shade400),
                 const SizedBox(width: 4),
-                Text('Start time is in the past',
+                Text(s.startTimeInPast,
                     style: GoogleFonts.nunito(fontSize: 12, color: Colors.orange.shade400)),
               ]),
             ),
@@ -566,7 +574,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
           if (_repeat != EventRepeat.custom && !_allDay) ...[
             const SizedBox(height: 8),
             _dateRow(
-              _repeat == EventRepeat.none ? 'End' : 'End time',
+              _repeat == EventRepeat.none ? s.end : s.endTime,
               _end,
               () => _pickDatePart(false),
               onTimeTap: () => _pickTimePart(false),
@@ -576,22 +584,22 @@ class _AddEventSheetState extends State<AddEventSheet> {
 
           if (!widget.isEditing) ...[
             const SizedBox(height: 14),
-            Text('Repeat', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+            Text(s.repeat, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _repeatChip('None', EventRepeat.none),
-              _repeatChip('Daily', EventRepeat.daily),
-              _repeatChip('Weekdays', EventRepeat.weekdays),
-              _repeatChip('Weekly', EventRepeat.weekly),
-              _repeatChip('Custom', EventRepeat.custom),
+              _repeatChip(s.repeatNone, EventRepeat.none),
+              _repeatChip(s.repeatDaily, EventRepeat.daily),
+              _repeatChip(s.repeatWeekdays, EventRepeat.weekdays),
+              _repeatChip(s.repeatWeekly, EventRepeat.weekly),
+              _repeatChip(s.custom, EventRepeat.custom),
             ]),
             if (_repeat != EventRepeat.none) ...[
               const SizedBox(height: 10),
-              _toggleRow(Icons.all_inclusive_rounded, 'No end date', _repeatForever,
+              _toggleRow(Icons.all_inclusive_rounded, s.noEndDate, _repeatForever,
                   (v) => setState(() => _repeatForever = v)),
               if (!_repeatForever) ...[
                 const SizedBox(height: 8),
-                _dateRow('Repeat until', _repeatUntil, _pickRepeatUntil, icon: Icons.event_repeat_rounded, dateOnly: true),
+                _dateRow(s.repeatUntil, _repeatUntil, _pickRepeatUntil, icon: Icons.event_repeat_rounded, dateOnly: true),
                 const SizedBox(height: 8),
                 _rangeChip(),
               ],
@@ -607,7 +615,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
                   child: Row(children: [
                     Icon(Icons.all_inclusive_rounded, size: 15, color: _accent),
                     const SizedBox(width: 8),
-                    Text('Repeats up to 1 year from start',
+                    Text(s.repeatsUpTo1Year,
                         style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: _accent)),
                   ]),
                 ),
@@ -616,7 +624,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
             if (_repeat == EventRepeat.custom) ...[
               const SizedBox(height: 14),
               // Same hours toggle
-              _toggleRow(Icons.tune_rounded, 'Same hours every day', _sameHours, (v) {
+              _toggleRow(Icons.tune_rounded, s.sameHoursEveryDay, _sameHours, (v) {
                 setState(() {
                   _sameHours = v;
                   if (v) _applyGlobalHours();
@@ -636,7 +644,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
                         color: active ? _accent : KalendrTheme.divider(context),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Center(child: Text(_dayLabels[wd - 1],
+                      child: Center(child: Text(dayLabels[wd - 1],
                           style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700,
                               color: active ? Colors.white : KalendrTheme.muted(context)))),
                     ),
@@ -653,7 +661,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
                     child: Row(children: [
                       Icon(Icons.schedule_rounded, size: 16, color: KalendrTheme.muted(context)),
                       const SizedBox(width: 10),
-                      Text('Hours', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.subtext(context))),
+                      Text(s.hours, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.subtext(context))),
                       const Spacer(),
                       _timePill(_globalHourStart, () async {
                         final t = await showKalendrTimePicker(context, _globalHourStart);
@@ -676,12 +684,12 @@ class _AddEventSheetState extends State<AddEventSheet> {
             ],
             if (_repeat != EventRepeat.none && _repeat != EventRepeat.custom) ...[
               const SizedBox(height: 6),
-              Text('${_generateDates().length} occurrences',
+              Text(s.addEvents(_generateDates().length),
                   style: GoogleFonts.nunito(fontSize: 12, color: _accent, fontWeight: FontWeight.w600)),
             ],
             if (_repeat == EventRepeat.custom && _customDays.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text('${_generateCustomOccurrences().length} occurrences',
+              Text(s.addEvents(_generateCustomOccurrences().length),
                   style: GoogleFonts.nunito(fontSize: 12, color: _accent, fontWeight: FontWeight.w600)),
             ],
           ],
@@ -710,7 +718,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
                         Text('$_created / $_totalOccurrences', style: GoogleFonts.nunito(fontSize: 14, color: Colors.white)),
                       ],
                     ])
-                  : Text(_submitLabel, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
+                  : Text(_submitLabel(s), style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),
         ]),
@@ -720,13 +728,14 @@ class _AddEventSheetState extends State<AddEventSheet> {
 
   Widget _customDayHoursRow(int weekday) {
     final schedule = _customDays[weekday]!;
+    final wdNames = context.s.weekdayNames;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
         child: Row(children: [
-          Text(_weekdayNames[weekday - 1],
+          Text(wdNames[weekday - 1],
               style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context))),
           const Spacer(),
           _timePill(schedule.start, () async {
@@ -746,6 +755,9 @@ class _AddEventSheetState extends State<AddEventSheet> {
   Widget _customDayRow(int weekday) {
     final active = _customDays.containsKey(weekday);
     final schedule = _customDays[weekday];
+    final s = context.s;
+    final dayLabels = s.weekdayShort;
+    final wdNames = s.weekdayNames;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(children: [
@@ -765,14 +777,14 @@ class _AddEventSheetState extends State<AddEventSheet> {
               color: active ? _accent : KalendrTheme.divider(context),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Center(child: Text(_dayLabels[weekday - 1],
+            child: Center(child: Text(dayLabels[weekday - 1],
                 style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700,
                     color: active ? Colors.white : KalendrTheme.muted(context)))),
           ),
         ),
         const SizedBox(width: 10),
         if (active) ...[
-          Expanded(child: Text(_weekdayNames[weekday - 1],
+          Expanded(child: Text(wdNames[weekday - 1],
               style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context)))),
           _timePill(schedule!.start, () async {
             final t = await showKalendrTimePicker(context, schedule.start);
@@ -784,7 +796,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
             if (t != null) setState(() => _customDays[weekday] = (start: schedule.start, end: t));
           }),
         ] else
-          Text(_weekdayNames[weekday - 1], style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+          Text(wdNames[weekday - 1], style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
       ]),
     );
   }
@@ -802,6 +814,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
   }
 
   Widget _rangeChip() {
+    final s = context.s;
     final startFmt = DateFormat('MMM d').format(_start);
     final endFmt = DateFormat('MMM d').format(_repeatUntil);
     final days = _repeatUntil.difference(_start).inDays + 1;
@@ -814,7 +827,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
       ),
       child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('From', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
+          Text(s.from, style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
               color: _accent.withOpacity(0.7), letterSpacing: 0.5)),
           Text(startFmt, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800,
               color: _accent)),
@@ -825,10 +838,10 @@ class _AddEventSheetState extends State<AddEventSheet> {
             Icon(Icons.arrow_forward_rounded, size: 14, color: _accent),
           ]),
           const SizedBox(height: 2),
-          Text('$days days', style: GoogleFonts.nunito(fontSize: 10, color: _accent.withOpacity(0.6))),
+          Text(s.daysCount(days), style: GoogleFonts.nunito(fontSize: 10, color: _accent.withOpacity(0.6))),
         ]),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('Until', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
+          Text(s.until, style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700,
               color: _accent.withOpacity(0.7), letterSpacing: 0.5)),
           Text(endFmt, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800,
               color: _accent)),
@@ -884,8 +897,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
     );
   }
 
-  Widget _dateRow(String label, DateTime dt, VoidCallback onDateTap, {VoidCallback? onTimeTap, IconData? icon, bool dateOnly = false, bool timeOnly = false}) {
-    final isStart = label == 'Start' || label == 'Starting from';
+  Widget _dateRow(String label, DateTime dt, VoidCallback onDateTap, {VoidCallback? onTimeTap, IconData? icon, bool isStart = false, bool dateOnly = false, bool timeOnly = false}) {
     final IconData rowIcon = icon ?? (isStart ? Icons.login_rounded : Icons.logout_rounded);
     final dateFmt = DateFormat('EEE, MMM d');
     final timeFmt = DateFormat('HH:mm');

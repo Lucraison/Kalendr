@@ -8,6 +8,7 @@ import '../providers/app_provider.dart';
 import '../theme.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/slide_route.dart';
+import '../l10n/app_strings.dart';
 import 'events_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
@@ -80,6 +81,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   void _showFab() {
     _error = '';
+    final s = context.s;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -103,7 +105,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               const SizedBox(height: 20),
 
               // Create section
-              Text('Create a group', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+              Text(s.createAGroup, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(
@@ -113,7 +115,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       controller: _groupName,
                       style: GoogleFonts.nunito(color: KalendrTheme.text(context), fontSize: 15),
                       decoration: InputDecoration(
-                        hintText: 'Group name...',
+                        hintText: s.groupNameHint,
                         hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 15),
                         prefixIcon: Icon(Icons.group_add_rounded, size: 18, color: KalendrTheme.muted(context)),
                         border: InputBorder.none,
@@ -136,7 +138,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     ),
                     child: _creating
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text('Create', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14)),
+                        : Text(s.create, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ),
               ]),
@@ -144,7 +146,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               const SizedBox(height: 20),
 
               // Join section
-              Text('Join with invite code', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+              Text(s.joinWithInviteCode, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(
@@ -178,7 +180,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     ),
                     child: _joining
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text('Join', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14)),
+                        : Text(context.s.join, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ),
               ]),
@@ -203,7 +205,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
           Container(
             color: KalendrTheme.surface(context),
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 12, left: 20, right: 20, bottom: 16),
-            child: Text('My Groups', style: GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+            child: Text(context.s.myGroups, style: GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -230,9 +232,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
                                 child: const Icon(Icons.people_outline_rounded, size: 40, color: kPrimary),
                               ),
                               const SizedBox(height: 20),
-                              Text('No groups yet', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+                              Text(context.s.noGroupsYet, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
                               const SizedBox(height: 6),
-                              Text('Tap + to create one or join with an invite code.', style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context)), textAlign: TextAlign.center),
+                              Text(context.s.tapPlusToCreate, style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context)), textAlign: TextAlign.center),
                             ])),
                           ],
                         )
@@ -262,12 +264,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
         Center(child: Column(children: [
           Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text('Could not load groups', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+          Text(context.s.couldNotLoadGroups, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: Text('Retry', style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+            label: Text(context.s.retry, style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
             style: TextButton.styleFrom(foregroundColor: kPrimary),
           ),
         ])),
@@ -312,13 +314,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Rename group', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        title: Text(context.s.rename + ' ' + context.s.groups.toLowerCase(), style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           style: GoogleFonts.nunito(),
           decoration: InputDecoration(
-            hintText: 'Group name',
+            hintText: context.s.groupName,
             hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context)),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             filled: true,
@@ -326,10 +328,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.nunito())),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
           TextButton(
             onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: Text('Rename', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
+            child: Text(context.s.rename, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -339,7 +341,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await context.read<AppProvider>().api.renameGroup(g.id, newName);
       setState(() => g.name = newName);
       if (mounted) {
-        showSnack(context, 'Group renamed!', color: _groupColor(g));
+        showSnack(context, context.s.groupRenamed, color: _groupColor(g));
       }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -351,13 +353,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Leave "${g.name}"?', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-        content: Text('You can rejoin later with an invite code.', style: GoogleFonts.nunito()),
+        title: Text(context.s.leaveGroupConfirm(g.name), style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        content: Text(context.s.rejoinWithInviteCode, style: GoogleFonts.nunito()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.nunito())),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.s.cancel, style: GoogleFonts.nunito())),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Leave', style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
+            child: Text(context.s.leave, style: GoogleFonts.nunito(color: kPrimary, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -427,7 +429,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     GestureDetector(
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: g.inviteCode));
-                        showSnack(context, 'Invite code copied!', color: color);
+                        showSnack(context, context.s.inviteCodeCopied, color: color);
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -448,7 +450,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         child: Row(children: [
                           Icon(Icons.share_rounded, size: 11, color: color),
                           const SizedBox(width: 4),
-                          Text('Share', style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+                          Text(context.s.share, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
                         ]),
                       ),
                     ),
