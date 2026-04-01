@@ -21,5 +21,8 @@ kalendr_app/.flutter-plugins-dependencies
 # Old MAUI project
 Kalendr.App/
 
+# Secrets (live on server only, never commit)
+Kalendr.API/appsettings.Production.json
+
 # Claude memory
 .claude/

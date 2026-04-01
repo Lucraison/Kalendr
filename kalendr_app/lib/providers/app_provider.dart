@@ -108,9 +108,9 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password) async {
-    final r = await api.login(email, password);
-    await auth.save(r, api, email: email);
+  Future<void> login(String username, String password) async {
+    final r = await api.login(username, password);
+    await auth.save(r, api);
     notifyListeners();
     _startPolling();
     _connectHub();
@@ -118,7 +118,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> register(String username, String email, String password) async {
     final r = await api.register(username, email, password);
-    await auth.save(r, api, email: email);
+    await auth.save(r, api);
     notifyListeners();
     _startPolling();
   }

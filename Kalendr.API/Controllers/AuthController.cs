@@ -38,18 +38,18 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        return Ok(new AuthResponse(GenerateToken(user), user.Username, user.Id));
+        return Ok(new AuthResponse(GenerateToken(user), user.Username, user.Id, user.Email));
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Unauthorized("Invalid credentials.");
 
-        return Ok(new AuthResponse(GenerateToken(user), user.Username, user.Id));
+        return Ok(new AuthResponse(GenerateToken(user), user.Username, user.Id, user.Email));
     }
 
     [HttpDelete("account")]
@@ -128,9 +128,9 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest req)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
-        // Always return OK to avoid email enumeration
-        if (user is null) return Ok();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
+        // Always return OK to avoid username enumeration
+        if (user is null) return Ok(new ForgotPasswordResponse(""));
 
         var code = Random.Shared.Next(100000, 999999).ToString();
         user.PasswordResetCode = BCrypt.Net.BCrypt.HashPassword(code);
@@ -140,13 +140,18 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
         try { await email.SendPasswordResetCodeAsync(user.Email, user.Username, code); }
         catch { /* don't leak email errors */ }
 
-        return Ok();
+        var parts = user.Email.Split('@');
+        var masked = parts[0].Length <= 2
+            ? new string('*', parts[0].Length) + '@' + parts[1]
+            : parts[0][0] + new string('*', parts[0].Length - 2) + parts[0][^1] + '@' + parts[1];
+
+        return Ok(new ForgotPasswordResponse(masked));
     }
 
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest req)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
         if (user is null
             || user.PasswordResetCode is null
             || user.PasswordResetCodeExpiry < DateTime.UtcNow

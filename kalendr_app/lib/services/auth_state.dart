@@ -35,17 +35,17 @@ class AuthState {
     if (token != null) api.setToken(token!);
   }
 
-  Future<void> save(AuthResponse r, ApiService api, {String? email}) async {
+  Future<void> save(AuthResponse r, ApiService api) async {
     token = r.token;
     userId = r.userId;
     username = r.username;
-    if (email != null) this.email = email;
+    if (r.email.isNotEmpty) email = r.email;
     api.setToken(r.token);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyToken, r.token);
     await prefs.setString(_keyUserId, r.userId);
     await prefs.setString(_keyUsername, r.username);
-    if (email != null) await prefs.setString(_keyEmail, email);
+    if (r.email.isNotEmpty) await prefs.setString(_keyEmail, r.email);
   }
 
   Future<void> saveUsername(String name) async {

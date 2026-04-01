@@ -14,20 +14,21 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _api = ApiService();
 
-  // Step 1: email input
+  // Step 1: username input
   // Step 2: code + new password
   int _step = 1;
   bool _busy = false;
   String _error = '';
 
-  final _email = TextEditingController();
+  final _username = TextEditingController();
   final _code = TextEditingController();
   final _newPassword = TextEditingController();
   final _confirmPassword = TextEditingController();
+  String _maskedEmail = '';
 
   @override
   void dispose() {
-    _email.dispose();
+    _username.dispose();
     _code.dispose();
     _newPassword.dispose();
     _confirmPassword.dispose();
@@ -36,12 +37,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _sendCode() async {
     final s = context.s;
-    final email = _email.text.trim();
-    if (email.isEmpty) { setState(() => _error = s.enterYourEmail); return; }
+    final username = _username.text.trim();
+    if (username.isEmpty) { setState(() => _error = s.enterYourUsername); return; }
     setState(() { _busy = true; _error = ''; });
     try {
-      await _api.forgotPassword(email);
-      if (mounted) setState(() { _step = 2; _busy = false; });
+      final masked = await _api.forgotPassword(username);
+      if (mounted) setState(() { _maskedEmail = masked; _step = 2; _busy = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _busy = false; });
     }
@@ -57,7 +58,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (newPass != confirm) { setState(() => _error = s.passwordsDoNotMatch); return; }
     setState(() { _busy = true; _error = ''; });
     try {
-      await _api.resetPassword(_email.text.trim(), code, newPass);
+      await _api.resetPassword(_username.text.trim(), code, newPass);
       if (!mounted) return;
       showSnack(context, context.s.passwordResetLoginAgain, color: const Color(0xFF06D6A0));
       Navigator.pop(context);
@@ -94,7 +95,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              _step == 1 ? s.enterEmailForCode : s.sentCodeTo(_email.text.trim()),
+              _step == 1 ? s.enterUsernameForCode : (_maskedEmail.isNotEmpty ? s.sentCodeTo(_maskedEmail) : s.checkYourEmail),
               style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.subtext(context)),
               textAlign: TextAlign.center,
             ),
@@ -116,7 +117,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(children: [
                 if (_step == 1) ...[
-                  _field(_email, s.email, Icons.email_outlined, keyboard: TextInputType.emailAddress),
+                  _field(_username, s.username, Icons.person_outline),
                 ] else ...[
                   _field(_code, s.sixDigitCode, Icons.pin_rounded, keyboard: TextInputType.number),
                   const SizedBox(height: 12),
@@ -155,7 +156,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
             if (_step == 2)
               TextButton(
-                onPressed: () => setState(() { _step = 1; _error = ''; _code.clear(); }),
+                onPressed: () => setState(() { _step = 1; _error = ''; _code.clear(); _maskedEmail = ''; }),
                 child: Text(s.resendCode, style: GoogleFonts.nunito(color: kPrimary, fontSize: 14)),
               ),
 

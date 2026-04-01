@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isRegister) {
         await provider.register(_username.text.trim(), _email.text.trim(), _password.text);
       } else {
-        await provider.login(_email.text.trim(), _password.text);
+        await provider.login(_username.text.trim(), _password.text);
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -118,11 +118,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
+                    _field(_username, s.username, Icons.person_outline),
                     if (_isRegister) ...[
-                      _field(_username, s.username, Icons.person_outline),
                       const SizedBox(height: 12),
+                      _field(_email, s.email, Icons.email_outlined, keyboard: TextInputType.emailAddress),
                     ],
-                    _field(_email, s.email, Icons.email_outlined, keyboard: TextInputType.emailAddress),
                     const SizedBox(height: 12),
                     _field(_password, s.password, Icons.lock_outline, obscure: true),
                     if (_error.isNotEmpty) ...[

@@ -41,7 +41,7 @@ class ApiService {
       }
       String msg;
       if (res.statusCode == 401) {
-        msg = 'Wrong email or password.';
+        msg = 'Wrong username or password.';
       } else {
         msg = 'Error ${res.statusCode}';
         try {
@@ -64,9 +64,9 @@ class ApiService {
           headers: _headers, body: jsonEncode({'username': username, 'email': email, 'password': password})),
           (j) => AuthResponse.fromJson(j));
 
-  Future<AuthResponse> login(String email, String password) =>
+  Future<AuthResponse> login(String username, String password) =>
       _handle(() => http.post(Uri.parse('$_base/api/auth/login'),
-          headers: _headers, body: jsonEncode({'email': email, 'password': password})),
+          headers: _headers, body: jsonEncode({'username': username, 'password': password})),
           (j) => AuthResponse.fromJson(j));
 
   Future<List<Group>> getGroups() =>
@@ -291,14 +291,14 @@ class ApiService {
           headers: _headers, body: jsonEncode({'currentPassword': currentPassword, 'newEmail': newEmail})),
           (_) => null);
 
-  Future<void> forgotPassword(String email) =>
+  Future<String> forgotPassword(String username) =>
       _handle(() => http.post(Uri.parse('$_base/api/auth/forgot-password'),
-          headers: _headers, body: jsonEncode({'email': email})),
-          (_) => null);
+          headers: _headers, body: jsonEncode({'username': username})),
+          (j) => (j as Map<String, dynamic>)['maskedEmail'] as String? ?? '');
 
-  Future<void> resetPassword(String email, String code, String newPassword) =>
+  Future<void> resetPassword(String username, String code, String newPassword) =>
       _handle(() => http.post(Uri.parse('$_base/api/auth/reset-password'),
-          headers: _headers, body: jsonEncode({'email': email, 'code': code, 'newPassword': newPassword})),
+          headers: _headers, body: jsonEncode({'username': username, 'code': code, 'newPassword': newPassword})),
           (_) => null);
 
   // Account
