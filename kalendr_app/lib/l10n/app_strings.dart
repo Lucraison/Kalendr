@@ -80,7 +80,8 @@ class AppStrings {
   String get backToLogin => _t('backToLogin');
   String get enterYourEmail => _t('enterYourEmail');
   String get enterYourUsername => _t('enterYourUsername');
-  String get enterUsernameForCode => _t('enterUsernameForCode');
+  String get usernameOrEmail => _t('usernameOrEmail');
+  String get enterUsernameOrEmailForCode => _t('enterUsernameOrEmailForCode');
   String get enterCodeFromEmail => _t('enterCodeFromEmail');
   String get passwordAtLeast6 => _t('passwordAtLeast6');
   String get passwordsDoNotMatch => _t('passwordsDoNotMatch');
@@ -323,7 +324,8 @@ class AppStrings {
       'backToLogin': 'Back to login',
       'enterYourEmail': 'Enter your email.',
       'enterYourUsername': 'Enter your username.',
-      'enterUsernameForCode': "Enter your username and we'll send a 6-digit code to your email.",
+      'usernameOrEmail': 'Username or email',
+      'enterUsernameOrEmailForCode': "Enter your username or email and we'll send a 6-digit code.",
       'enterCodeFromEmail': 'Enter the code from your email.',
       'passwordAtLeast6': 'Password must be at least 6 characters.',
       'passwordsDoNotMatch': 'Passwords do not match.',
@@ -560,7 +562,8 @@ class AppStrings {
       'backToLogin': 'Retour à la connexion',
       'enterYourEmail': 'Entrez votre e-mail.',
       'enterYourUsername': "Entrez votre nom d'utilisateur.",
-      'enterUsernameForCode': "Entrez votre nom d'utilisateur et nous enverrons un code à 6 chiffres à votre e-mail.",
+      'usernameOrEmail': "Nom d'utilisateur ou e-mail",
+      'enterUsernameOrEmailForCode': "Entrez votre nom d'utilisateur ou e-mail et nous vous enverrons un code à 6 chiffres.",
       'enterCodeFromEmail': 'Entrez le code reçu par e-mail.',
       'passwordAtLeast6': 'Le mot de passe doit contenir au moins 6 caractères.',
       'passwordsDoNotMatch': 'Les mots de passe ne correspondent pas.',
@@ -797,7 +800,8 @@ class AppStrings {
       'backToLogin': 'Volver al inicio de sesión',
       'enterYourEmail': 'Ingresa tu correo.',
       'enterYourUsername': 'Ingresa tu usuario.',
-      'enterUsernameForCode': 'Ingresa tu usuario y te enviaremos un código de 6 dígitos a tu correo.',
+      'usernameOrEmail': 'Usuario o correo',
+      'enterUsernameOrEmailForCode': 'Ingresa tu usuario o correo y te enviaremos un código de 6 dígitos.',
       'enterCodeFromEmail': 'Ingresa el código de tu correo.',
       'passwordAtLeast6': 'La contraseña debe tener al menos 6 caracteres.',
       'passwordsDoNotMatch': 'Las contraseñas no coinciden.',

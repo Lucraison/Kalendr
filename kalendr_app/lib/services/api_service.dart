@@ -291,14 +291,14 @@ class ApiService {
           headers: _headers, body: jsonEncode({'currentPassword': currentPassword, 'newEmail': newEmail})),
           (_) => null);
 
-  Future<String> forgotPassword(String username) =>
+  Future<String> forgotPassword(String usernameOrEmail) =>
       _handle(() => http.post(Uri.parse('$_base/api/auth/forgot-password'),
-          headers: _headers, body: jsonEncode({'username': username})),
+          headers: _headers, body: jsonEncode({'usernameOrEmail': usernameOrEmail})),
           (j) => (j as Map<String, dynamic>)['maskedEmail'] as String? ?? '');
 
-  Future<void> resetPassword(String username, String code, String newPassword) =>
+  Future<void> resetPassword(String usernameOrEmail, String code, String newPassword) =>
       _handle(() => http.post(Uri.parse('$_base/api/auth/reset-password'),
-          headers: _headers, body: jsonEncode({'username': username, 'code': code, 'newPassword': newPassword})),
+          headers: _headers, body: jsonEncode({'usernameOrEmail': usernameOrEmail, 'code': code, 'newPassword': newPassword})),
           (_) => null);
 
   // Account

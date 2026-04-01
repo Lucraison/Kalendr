@@ -14,13 +14,13 @@ namespace Kalendr.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(AppDbContext db, IConfiguration config, IEmailService email) : ControllerBase
+public class AuthController(AppDbContext db, IConfiguration config, IEmailService email, ILogger<AuthController> logger) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
     {
         if (await db.Users.AnyAsync(u => u.Email == req.Email))
-            return Conflict("Email already in use.");
+            return Conflict(new { message = "Email already in use." });
 
         if (await db.Users.AnyAsync(u => u.Username == req.Username))
             return Conflict(new { message = "Username already taken." });
@@ -128,8 +128,9 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest req)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
-        // Always return OK to avoid username enumeration
+        var input = req.UsernameOrEmail.Trim();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == input || u.Email == input);
+        // Always return OK to avoid username/email enumeration
         if (user is null) return Ok(new ForgotPasswordResponse(""));
 
         var code = Random.Shared.Next(100000, 999999).ToString();
@@ -138,7 +139,7 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
         await db.SaveChangesAsync();
 
         try { await email.SendPasswordResetCodeAsync(user.Email, user.Username, code); }
-        catch { /* don't leak email errors */ }
+        catch (Exception ex) { logger.LogError(ex, "Failed to send password reset email to {Email}", user.Email); }
 
         var parts = user.Email.Split('@');
         var masked = parts[0].Length <= 2
@@ -151,7 +152,8 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest req)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
+        var input = req.UsernameOrEmail.Trim();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == input || u.Email == input);
         if (user is null
             || user.PasswordResetCode is null
             || user.PasswordResetCodeExpiry < DateTime.UtcNow
