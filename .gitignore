@@ -24,5 +24,9 @@ Kalendr.App/
 # Secrets (live on server only, never commit)
 Kalendr.API/appsettings.Production.json
 
+# Release signing (never commit)
+kalendr_app/android/key.properties
+kalendr_app/android/app/kalendr-release.keystore
+
 # Claude memory
 .claude/

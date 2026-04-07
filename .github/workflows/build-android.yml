@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android
 
 on:
   push:
@@ -28,22 +28,31 @@ jobs:
         run: flutter pub get
         working-directory: kalendr_app
 
-      - name: Build APK
-        run: flutter build apk --release
-        working-directory: kalendr_app
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > kalendr_app/android/app/kalendr-release.keystore
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > kalendr_app/android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> kalendr_app/android/key.properties
+          echo "keyAlias=kalendr" >> kalendr_app/android/key.properties
+          echo "storeFile=kalendr-release.keystore" >> kalendr_app/android/key.properties
 
-      - name: Upload APK
+      - name: Build AAB
+        run: flutter build appbundle --release
+        working-directory: kalendr_app
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload to Play Store (Internal Track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.kalendr.kalendr_app
+          releaseFiles: kalendr_app/build/app/outputs/bundle/release/app-release.aab
+          track: internal
+
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kalendr-android
-          path: kalendr_app/build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Latest Build
-          files: kalendr_app/build/app/outputs/flutter-apk/app-release.apk
-          body: Latest build of Kalendr
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: chalk-release-aab
+          path: kalendr_app/build/app/outputs/bundle/release/app-release.aab
