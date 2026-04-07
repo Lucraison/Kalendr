@@ -227,7 +227,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
 
   static const _colorOptions = [
     '#FF6B6B', '#8338EC', '#3B82F6', '#0D9488',
-    '#F97316', '#06D6A0', '#FFBE0B', '#EF4444',
+    '#F97316', '#06D6A0', '#FFBE0B',
   ];
 
   // Weekday labels are loaded from AppStrings at build time via context.s

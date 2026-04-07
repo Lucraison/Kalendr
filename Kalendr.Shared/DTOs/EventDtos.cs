@@ -10,6 +10,7 @@ public record CreateEventRequest(
     DateTime StartTime,
     DateTime EndTime,
     bool IsWorkHours,
+    bool IsAllDay = false,
     string? Color = null,
     List<Guid>? SharedGroupIds = null,
     Guid? RecurrenceId = null
@@ -21,6 +22,7 @@ public record UpdateEventRequest(
     DateTime StartTime,
     DateTime EndTime,
     bool IsWorkHours,
+    bool IsAllDay = false,
     string? Color = null,
     List<Guid>? SharedGroupIds = null
 );
@@ -35,7 +37,8 @@ public record EventDto(
     string? Description,
     DateTime StartTime,
     DateTime EndTime,
-    bool IsAllDay,       // serializes as "isAllDay" — matches Flutter model
+    bool IsAllDay,
+    bool IsWorkHours,
     string? Color,
     List<Guid> SharedGroupIds,
     Guid? RecurrenceId = null
@@ -51,9 +54,10 @@ public record UpdateSeriesRequest(
     int StartMinute,
     int DurationMinutes,
     bool IsWorkHours,
-    string? Color,
-    string? Description,
-    List<Guid>? SharedGroupIds
+    bool IsAllDay = false,
+    string? Color = null,
+    string? Description = null,
+    List<Guid>? SharedGroupIds = null
 );
 
 public record UpdateRecurrenceSeriesRequest(

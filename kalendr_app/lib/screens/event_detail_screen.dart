@@ -492,7 +492,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    alignment: WrapAlignment.center,
+                    alignment: WrapAlignment.start,
                     children: _quickEmojis.map((emoji) {
                       final myReacted = _reactions.any((r) => r.userId == currentUserId && r.emoji == emoji);
                       final count = grouped[emoji]?.length ?? 0;

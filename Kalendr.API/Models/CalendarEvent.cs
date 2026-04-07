@@ -8,6 +8,7 @@ public class CalendarEvent
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     public bool IsWorkHours { get; set; }
+    public bool IsAllDay { get; set; }
 
     public Guid? GroupId { get; set; }
     public Group? Group { get; set; }

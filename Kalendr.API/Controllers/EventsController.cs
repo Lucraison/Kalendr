@@ -98,6 +98,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             StartTime = req.StartTime,
             EndTime = req.EndTime,
             IsWorkHours = req.IsWorkHours,
+            IsAllDay = req.IsAllDay,
             GroupId = req.GroupId,
             CreatedByUserId = CurrentUserId
         };
@@ -194,6 +195,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
                 StartTime = r.StartTime,
                 EndTime = r.EndTime,
                 IsWorkHours = r.IsWorkHours,
+                IsAllDay = r.IsAllDay,
                 GroupId = r.GroupId,
                 CreatedByUserId = CurrentUserId,
                 Color = r.Color,
@@ -294,6 +296,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         ev.StartTime = req.StartTime;
         ev.EndTime = req.EndTime;
         ev.IsWorkHours = req.IsWorkHours;
+        ev.IsAllDay = req.IsAllDay;
         ev.Color = req.Color;
 
         // Update shared groups for personal events
@@ -643,6 +646,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             ev.StartTime = newStart;
             ev.EndTime = newEnd;
             ev.IsWorkHours = req.IsWorkHours;
+            ev.IsAllDay = req.IsAllDay;
             ev.Color = req.Color;
             ev.Description = req.Description;
 
@@ -674,6 +678,7 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             e.Description,
             e.StartTime,
             e.EndTime,
+            e.IsAllDay,
             e.IsWorkHours,
             e.Color,
             e.SharedWith.Select(s => s.GroupId).ToList(),

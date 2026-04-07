@@ -108,7 +108,7 @@ class ApiService {
   }
 
   Future<CalendarEvent> createEvent(String? groupId, String title, String? description,
-      DateTime startTime, DateTime endTime, bool isAllDay, {String? color, List<String>? sharedGroupIds}) =>
+      DateTime startTime, DateTime endTime, bool isAllDay, {bool isWorkHours = false, String? color, List<String>? sharedGroupIds}) =>
       _handle(() => http.post(Uri.parse('$_base/api/events'),
           headers: _headers,
           body: jsonEncode({
@@ -117,7 +117,8 @@ class ApiService {
             'description': description,
             'startTime': iso(startTime),
             'endTime': iso(endTime),
-            'isWorkHours': isAllDay,
+            'isWorkHours': isWorkHours,
+            'isAllDay': isAllDay,
             'color': color,
             'sharedGroupIds': sharedGroupIds,
           })),
@@ -133,7 +134,7 @@ class ApiService {
       );
 
   Future<CalendarEvent> updateEvent(String eventId, String title, String? description,
-      DateTime startTime, DateTime endTime, bool isAllDay, {String? color, List<String>? sharedGroupIds}) =>
+      DateTime startTime, DateTime endTime, bool isAllDay, {bool isWorkHours = false, String? color, List<String>? sharedGroupIds}) =>
       _handle(() => http.put(Uri.parse('$_base/api/events/$eventId'),
           headers: _headers,
           body: jsonEncode({
@@ -141,7 +142,8 @@ class ApiService {
             'description': description,
             'startTime': iso(startTime),
             'endTime': iso(endTime),
-            'isWorkHours': isAllDay,
+            'isWorkHours': isWorkHours,
+            'isAllDay': isAllDay,
             'color': color,
             'sharedGroupIds': sharedGroupIds,
           })),
@@ -158,6 +160,7 @@ class ApiService {
             'startMinute': startMinute,
             'durationMinutes': durationMinutes,
             'isWorkHours': isAllDay,
+            'isAllDay': false,
             'color': color,
             'description': description,
             'sharedGroupIds': sharedGroupIds,

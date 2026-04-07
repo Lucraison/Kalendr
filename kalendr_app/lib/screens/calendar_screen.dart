@@ -289,66 +289,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       builder: (_) => TypePickerSheet(
         onEvent: () {
           Navigator.pop(context);
-          _showGroupPicker(forWork: false, includePersonal: true);
+          _openAddSheet(null);
         },
         onWorkSchedule: () {
           Navigator.pop(context);
-          _showGroupPicker(forWork: true, includePersonal: true);
+          _openAddSheet(null, forWork: true);
         },
-      ),
-    );
-  }
-
-  void _showGroupPicker({bool forWork = false, bool includePersonal = false}) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: BoxDecoration(
-          color: KalendrTheme.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Center(child: Container(width: 36, height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 16),
-          Text(context.s.addTo, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
-          const SizedBox(height: 12),
-          if (includePersonal)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.person_rounded, color: Colors.grey, size: 18),
-              ),
-              title: Text(context.s.personal, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
-              subtitle: Text(context.s.onlyVisibleToYou, style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
-              onTap: () {
-                Navigator.pop(context);
-                _openAddSheet(null, forWork: forWork);
-              },
-            ),
-          ..._groups.map((g) {
-            final color = _groupColor(g);
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.group_rounded, color: color, size: 18),
-              ),
-              title: Text(g.name, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
-              subtitle: Text(context.s.memberCount(g.members.length),
-                  style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
-              onTap: () {
-                Navigator.pop(context);
-                _openAddSheet(g, forWork: forWork);
-              },
-            );
-          }),
-        ]),
       ),
     );
   }
@@ -381,6 +327,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   'startTime': ApiService.iso(o.$1),
                   'endTime': ApiService.iso(o.$2),
                   'isWorkHours': true,
+                  'isAllDay': false,
                   'color': '#3B82F6',
                   'sharedGroupIds': sharedGroupIds,
                 }).toList();
@@ -421,7 +368,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   'description': desc,
                   'startTime': ApiService.iso(o.$1),
                   'endTime': ApiService.iso(o.$2),
-                  'isWorkHours': allDay,
+                  'isWorkHours': false,
+                  'isAllDay': allDay,
                   'color': color,
                   'sharedGroupIds': sharedGroupIds.isEmpty ? null : sharedGroupIds,
                 }).toList();
