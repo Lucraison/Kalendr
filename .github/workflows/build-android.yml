@@ -28,6 +28,10 @@ jobs:
         run: flutter pub get
         working-directory: kalendr_app
 
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+        working-directory: kalendr_app
+
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > kalendr_app/android/app/kalendr-release.keystore

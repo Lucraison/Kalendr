@@ -862,9 +862,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               final earliest = shifts.map((e) => e.event.startTime).reduce((a, b) => a.isBefore(b) ? a : b);
               final latest = shifts.map((e) => e.event.endTime).reduce((a, b) => a.isAfter(b) ? a : b);
               final hours = '${DateFormat('HH:mm').format(earliest)}–${DateFormat('HH:mm').format(latest)}';
-              return Tooltip(
-                message: '$name · $hours',
-                child: Container(
+              return Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
                   width: 30, height: 30,
                   decoration: BoxDecoration(shape: BoxShape.circle, color: _kWorkBlue),
                   child: Center(child: Text(
@@ -872,7 +871,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
                   )),
                 ),
-              );
+                const SizedBox(width: 4),
+                Text(hours, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600, color: _kWorkBlue)),
+              ]);
             }).toList()),
           ),
         ]),
