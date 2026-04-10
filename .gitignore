@@ -27,6 +27,8 @@ Kalendr.API/appsettings.Production.json
 # Release signing (never commit)
 kalendr_app/android/key.properties
 kalendr_app/android/app/kalendr-release.keystore
+*.b64
+tmp.*
 
 # Claude memory
 .claude/
