@@ -31,9 +31,8 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   late final TextEditingController _name;
   final Set<int> _selectedDays = {1, 2, 3, 4, 5}; // Mon–Fri by default
   bool _sameHours = true;
-  TimeOfDay _globalStart = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _globalEnd = const TimeOfDay(hour: 17, minute: 0);
-  final Map<int, ({TimeOfDay start, TimeOfDay end})> _dayHours = {};
+  late List<({TimeOfDay start, TimeOfDay end})> _globalShifts;
+  final Map<int, List<({TimeOfDay start, TimeOfDay end})>> _dayHours = {};
   late DateTime _from;
   late DateTime _until;
   String? _presetLabel = '1M'; // null = custom
@@ -43,18 +42,20 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   List<String> _sharedGroupIds = [];
 
   static const _presets = ['1W', '2W', '1M', '3M'];
+  static const _defaultStart = TimeOfDay(hour: 9, minute: 0);
+  static const _defaultEnd = TimeOfDay(hour: 17, minute: 0);
+  static const _secondShiftStart = TimeOfDay(hour: 18, minute: 0);
+  static const _secondShiftEnd = TimeOfDay(hour: 22, minute: 0);
 
   DateTime _untilForPreset(String label, DateTime from) {
     switch (label) {
-      case '1W': return from.add(const Duration(days: 6));   // 7 days inclusive
-      case '2W': return from.add(const Duration(days: 13));  // 14 days inclusive
+      case '1W': return from.add(const Duration(days: 6));
+      case '2W': return from.add(const Duration(days: 13));
       case '1M': return DateTime(from.year, from.month + 1, from.day).subtract(const Duration(days: 1));
       case '3M': return DateTime(from.year, from.month + 3, from.day).subtract(const Duration(days: 1));
       default:   return from.add(const Duration(days: 6));
     }
   }
-
-  // Weekday labels are loaded from AppStrings at build time via context.s
 
   @override
   void initState() {
@@ -63,8 +64,9 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     final base = widget.initialDate ?? DateTime.now();
     _from = DateTime(base.year, base.month, base.day);
     _until = _untilForPreset('1M', _from);
+    _globalShifts = [(start: _defaultStart, end: _defaultEnd)];
     for (final d in _selectedDays) {
-      _dayHours[d] = (start: _globalStart, end: _globalEnd);
+      _dayHours[d] = List.from(_globalShifts);
     }
   }
 
@@ -81,14 +83,14 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
         _dayHours.remove(weekday);
       } else {
         _selectedDays.add(weekday);
-        _dayHours[weekday] = (start: _globalStart, end: _globalEnd);
+        _dayHours[weekday] = List.from(_globalShifts);
       }
     });
   }
 
   void _applyGlobalHours() {
     for (final d in _selectedDays) {
-      _dayHours[d] = (start: _globalStart, end: _globalEnd);
+      _dayHours[d] = List.from(_globalShifts);
     }
   }
 
@@ -98,10 +100,12 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     while (!current.isAfter(_until)) {
       final wd = current.weekday;
       if (_selectedDays.contains(wd)) {
-        final hours = _dayHours[wd] ?? (start: _globalStart, end: _globalEnd);
-        final s = DateTime(current.year, current.month, current.day, hours.start.hour, hours.start.minute);
-        final e = DateTime(current.year, current.month, current.day, hours.end.hour, hours.end.minute);
-        result.add((s, e));
+        final shifts = _dayHours[wd] ?? _globalShifts;
+        for (final shift in shifts) {
+          final s = DateTime(current.year, current.month, current.day, shift.start.hour, shift.start.minute);
+          final e = DateTime(current.year, current.month, current.day, shift.end.hour, shift.end.minute);
+          result.add((s, e));
+        }
       }
       current = current.add(const Duration(days: 1));
     }
@@ -125,7 +129,6 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     if (date != null && mounted) {
       setState(() {
         _from = date;
-        // recalculate end based on active preset
         if (_presetLabel != null) {
           _until = _untilForPreset(_presetLabel!, _from);
         } else if (_until.isBefore(_from)) {
@@ -275,34 +278,15 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
           ),
           const SizedBox(height: 14),
 
-          // Hours
+          // Hours toggle
           _toggleRow(Icons.tune_rounded, s.sameHoursEveryDay, _sameHours, (v) {
             setState(() { _sameHours = v; if (v) _applyGlobalHours(); });
           }),
           if (_selectedDays.isNotEmpty) ...[
             const SizedBox(height: 10),
-            if (_sameHours) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
-                child: Row(children: [
-                  Icon(Icons.schedule_rounded, size: 16, color: KalendrTheme.muted(context)),
-                  const SizedBox(width: 10),
-                  Text(s.hours, style: GoogleFonts.nunito(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.subtext(context))),
-                  const Spacer(),
-                  _timePill(_globalStart, () async {
-                    final t = await _pickTime(_globalStart);
-                    if (t != null) setState(() { _globalStart = t; _applyGlobalHours(); });
-                  }),
-                  Text('–', style: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14)),
-                  _timePill(_globalEnd, () async {
-                    final t = await _pickTime(_globalEnd);
-                    if (t != null) setState(() { _globalEnd = t; _applyGlobalHours(); });
-                  }),
-                ]),
-              ),
-            ] else ...[
+            if (_sameHours)
+              _globalShiftsCard()
+            else ...[
               ...[1, 2, 3, 4, 5, 6, 7]
                   .where((wd) => _selectedDays.contains(wd))
                   .map((wd) => _dayHoursRow(wd)),
@@ -449,31 +433,187 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     );
   }
 
+  // ── Global shifts card (same hours mode) ─────────────────────────────────
+
+  Widget _globalShiftsCard() {
+    final s = context.s;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...List.generate(_globalShifts.length, (i) {
+            final shift = _globalShifts[i];
+            final isLast = i == _globalShifts.length - 1;
+            return Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+              child: Row(children: [
+                Icon(Icons.schedule_rounded, size: 16, color: KalendrTheme.muted(context)),
+                const SizedBox(width: 10),
+                Text(
+                  _globalShifts.length > 1 ? '${i + 1}' : s.hours,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                    color: _globalShifts.length > 1 ? _kWorkColor : KalendrTheme.subtext(context),
+                  ),
+                ),
+                const Spacer(),
+                _timePill(shift.start, () async {
+                  final t = await _pickTime(shift.start);
+                  if (t != null) {
+                    setState(() {
+                      final updated = List<({TimeOfDay start, TimeOfDay end})>.from(_globalShifts);
+                      updated[i] = (start: t, end: shift.end);
+                      _globalShifts = updated;
+                      _applyGlobalHours();
+                    });
+                  }
+                }),
+                Text('–', style: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14)),
+                _timePill(shift.end, () async {
+                  final t = await _pickTime(shift.end);
+                  if (t != null) {
+                    setState(() {
+                      final updated = List<({TimeOfDay start, TimeOfDay end})>.from(_globalShifts);
+                      updated[i] = (start: shift.start, end: t);
+                      _globalShifts = updated;
+                      _applyGlobalHours();
+                    });
+                  }
+                }),
+                if (_globalShifts.length > 1) ...[
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        final updated = List<({TimeOfDay start, TimeOfDay end})>.from(_globalShifts);
+                        updated.removeAt(i);
+                        _globalShifts = updated;
+                        _applyGlobalHours();
+                      });
+                    },
+                    child: Icon(Icons.remove_circle_outline_rounded, size: 18, color: Colors.red.shade300),
+                  ),
+                ],
+              ]),
+            );
+          }),
+          if (_globalShifts.length < 2) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _globalShifts = [
+                    ..._globalShifts,
+                    (start: _secondShiftStart, end: _secondShiftEnd),
+                  ];
+                  _applyGlobalHours();
+                });
+              },
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.add_circle_outline_rounded, size: 16, color: _kWorkColor),
+                const SizedBox(width: 6),
+                Text(s.addSecondShift,
+                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: _kWorkColor)),
+              ]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Per-day shift row (different hours mode) ──────────────────────────────
+
   Widget _dayHoursRow(int weekday) {
-    final schedule = _dayHours[weekday]!;
+    final shifts = _dayHours[weekday]!;
     final wdNames = context.s.weekdayNames;
+    final s = context.s;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [
-          Text(wdNames[weekday - 1],
-              style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context))),
-          const Spacer(),
-          _timePill(schedule.start, () async {
-            final t = await _pickTime(schedule.start);
-            if (t != null) setState(() => _dayHours[weekday] = (start: t, end: schedule.end));
-          }),
-          Text('–', style: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14)),
-          _timePill(schedule.end, () async {
-            final t = await _pickTime(schedule.end);
-            if (t != null) setState(() => _dayHours[weekday] = (start: schedule.start, end: t));
-          }),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ...List.generate(shifts.length, (i) {
+              final shift = shifts[i];
+              final isLast = i == shifts.length - 1;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+                child: Row(children: [
+                  if (i == 0)
+                    Text(wdNames[weekday - 1],
+                        style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context)))
+                  else
+                    Text('  ${i + 1}',
+                        style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: _kWorkColor)),
+                  const Spacer(),
+                  _timePill(shift.start, () async {
+                    final t = await _pickTime(shift.start);
+                    if (t != null) {
+                      setState(() {
+                        final updated = List<({TimeOfDay start, TimeOfDay end})>.from(shifts);
+                        updated[i] = (start: t, end: shift.end);
+                        _dayHours[weekday] = updated;
+                      });
+                    }
+                  }),
+                  Text('–', style: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 14)),
+                  _timePill(shift.end, () async {
+                    final t = await _pickTime(shift.end);
+                    if (t != null) {
+                      setState(() {
+                        final updated = List<({TimeOfDay start, TimeOfDay end})>.from(shifts);
+                        updated[i] = (start: shift.start, end: t);
+                        _dayHours[weekday] = updated;
+                      });
+                    }
+                  }),
+                  if (shifts.length > 1) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          final updated = List<({TimeOfDay start, TimeOfDay end})>.from(shifts);
+                          updated.removeAt(i);
+                          _dayHours[weekday] = updated;
+                        });
+                      },
+                      child: Icon(Icons.remove_circle_outline_rounded, size: 18, color: Colors.red.shade300),
+                    ),
+                  ],
+                ]),
+              );
+            }),
+            if (shifts.length < 2) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _dayHours[weekday] = [
+                      ...shifts,
+                      (start: _secondShiftStart, end: _secondShiftEnd),
+                    ];
+                  });
+                },
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.add_circle_outline_rounded, size: 14, color: _kWorkColor),
+                  const SizedBox(width: 4),
+                  Text(s.addSecondShift,
+                      style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600, color: _kWorkColor)),
+                ]),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+
+  // ── Shared helpers ────────────────────────────────────────────────────────
 
   Widget _timePill(TimeOfDay t, VoidCallback onTap) {
     return GestureDetector(

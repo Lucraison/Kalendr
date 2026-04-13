@@ -153,6 +153,7 @@ class AppStrings {
   String get addWorkSchedule => _t('addWorkSchedule');
   String shiftCount(int n) => _t(n == 1 ? 'shift1' : 'shiftsN').replaceAll('{n}', '$n');
   String addShifts(int n) => _t(n == 1 ? 'add1Shift' : 'addNShifts').replaceAll('{n}', '$n');
+  String get addSecondShift => _t('addSecondShift');
 
   // ── Type picker ───────────────────────────────────────────────────────────
   String get whatAreYouAdding => _t('whatAreYouAdding');
@@ -399,6 +400,7 @@ class AppStrings {
       'shiftsN': '{n} shifts',
       'add1Shift': 'Add 1 Shift',
       'addNShifts': 'Add {n} Shifts',
+      'addSecondShift': 'Add second shift',
       // Type picker
       'whatAreYouAdding': 'What are you adding?',
       'event': 'Event',
@@ -637,6 +639,7 @@ class AppStrings {
       'shiftsN': '{n} quarts',
       'add1Shift': 'Ajouter 1 quart',
       'addNShifts': 'Ajouter {n} quarts',
+      'addSecondShift': 'Ajouter un deuxième quart',
       // Type picker
       'whatAreYouAdding': 'Que voulez-vous ajouter ?',
       'event': 'Événement',
@@ -875,6 +878,7 @@ class AppStrings {
       'shiftsN': '{n} turnos',
       'add1Shift': 'Agregar 1 turno',
       'addNShifts': 'Agregar {n} turnos',
+      'addSecondShift': 'Agregar segundo turno',
       // Type picker
       'whatAreYouAdding': '¿Qué vas a agregar?',
       'event': 'Evento',
