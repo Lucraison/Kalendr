@@ -318,7 +318,8 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         await db.Entry(ev).Collection(e => e.SharedWith).LoadAsync();
 
         var dto = ToDto(ev);
-        await hub.Clients.Group($"group-{ev.GroupId}").SendAsync("EventUpdated", dto);
+        if (ev.GroupId.HasValue)
+            await hub.Clients.Group($"group-{ev.GroupId}").SendAsync("EventUpdated", dto);
 
         return Ok(dto);
     }
@@ -424,7 +425,8 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         {
             db.Reactions.Remove(existing);
             await db.SaveChangesAsync();
-            await hub.Clients.Group($"group-{ev.GroupId}").SendAsync("ReactionRemoved", id, existing.Id);
+            if (ev.GroupId.HasValue)
+                await hub.Clients.Group($"group-{ev.GroupId}").SendAsync("ReactionRemoved", id, existing.Id);
             return NoContent();
         }
 
@@ -434,7 +436,8 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         await db.Entry(reaction).Reference(r => r.User).LoadAsync();
 
         var dto = new ReactionDto(reaction.Id, reaction.UserId, reaction.User.Username, reaction.Emoji);
-        await hub.Clients.Group($"group-{ev.GroupId}").SendAsync("ReactionAdded", id, dto);
+        if (ev.GroupId.HasValue)
+            await hub.Clients.Group($"group-{ev.GroupId}").SendAsync("ReactionAdded", id, dto);
         return Ok(dto);
     }
 
@@ -546,21 +549,6 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         return Ok(new RsvpDto(existing.UserId, existing.User.Username, existing.Status.ToString().ToLower()));
     }
 
-    [HttpDelete("delete-series")]
-    public async Task<IActionResult> DeleteSeries([FromQuery] string title, [FromQuery] Guid? groupId)
-    {
-        var titleLower = title.ToLower();
-        var events = await db.Events
-            .Where(e => e.CreatedByUserId == CurrentUserId &&
-                        (groupId == null ? e.GroupId == null : e.GroupId == groupId) &&
-                        e.Title.ToLower() == titleLower)
-            .ToListAsync();
-
-        db.Events.RemoveRange(events);
-        await db.SaveChangesAsync();
-        return Ok(new { deleted = events.Count });
-    }
-
     [HttpPut("series/{recurrenceId}")]
     public async Task<IActionResult> UpdateRecurrenceSeries(Guid recurrenceId, UpdateRecurrenceSeriesRequest req)
     {
@@ -617,52 +605,6 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             await hub.Clients.Group($"group-{groupId}").SendAsync("SeriesDeleted", recurrenceId);
 
         return Ok(new { deleted = events.Count });
-    }
-
-    [HttpPost("update-series")]
-    public async Task<IActionResult> UpdateSeries(UpdateSeriesRequest req)
-    {
-        if (req.StartHour < 0 || req.StartHour > 23)
-            return BadRequest(new { message = "StartHour must be between 0 and 23." });
-        if (req.StartMinute < 0 || req.StartMinute > 59)
-            return BadRequest(new { message = "StartMinute must be between 0 and 59." });
-        if (!req.IsWorkHours && req.DurationMinutes <= 0)
-            return BadRequest(new { message = "DurationMinutes must be greater than 0." });
-
-        var titleLower = req.Title.ToLower();
-        var events = await db.Events
-            .Include(e => e.SharedWith)
-            .Where(e => e.CreatedByUserId == CurrentUserId &&
-                        (req.GroupId == null ? e.GroupId == null : e.GroupId == req.GroupId) &&
-                        e.Title.ToLower() == titleLower)
-            .ToListAsync();
-
-        foreach (var ev in events)
-        {
-            var newStart = new DateTime(ev.StartTime.Year, ev.StartTime.Month, ev.StartTime.Day,
-                req.StartHour, req.StartMinute, 0);
-            var newEnd = newStart.AddMinutes(req.DurationMinutes);
-
-            ev.StartTime = newStart;
-            ev.EndTime = newEnd;
-            ev.IsWorkHours = req.IsWorkHours;
-            ev.IsAllDay = req.IsAllDay;
-            ev.Color = req.Color;
-            ev.Description = req.Description;
-
-            if (!ev.GroupId.HasValue && req.SharedGroupIds != null)
-            {
-                db.EventGroupShares.RemoveRange(ev.SharedWith);
-                foreach (var gid in req.SharedGroupIds)
-                {
-                    var isMember = await db.GroupMembers.AnyAsync(gm => gm.GroupId == gid && gm.UserId == CurrentUserId);
-                    if (isMember) db.EventGroupShares.Add(new EventGroupShare { EventId = ev.Id, GroupId = gid });
-                }
-            }
-        }
-
-        await db.SaveChangesAsync();
-        return Ok(new { updated = events.Count });
     }
 
     private static EventDto ToDto(CalendarEvent e)

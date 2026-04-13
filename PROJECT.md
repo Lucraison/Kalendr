@@ -44,6 +44,53 @@
 
 ## Change Log
 
+### 2026-04-12 — VPS Hardening & Config Fixes
+
+**JWT key was malformed in systemd override**
+- The line `Environment="xK9#mP2$..."` was missing the `Jwt__Key=` prefix
+- Systemd was treating the entire string as a variable name with no value
+- App was falling back to the placeholder key in `appsettings.json`
+- Fixed: `Environment="Jwt__Key=xK9#mP2$vL8nQ5rT7wY3uJ6hF4dA1eB0cG2iM9oS5pZ8kN3"`
+
+**SMTP credentials moved into systemd override**
+- `appsettings.Production.json` existed only in `/opt/kalendr/publish/` — fragile, not version-controlled, survives deploys by luck
+- Moved all SMTP config into `/etc/systemd/system/kalendr.service.d/override.conf` so it survives any future `dotnet publish` overwrite
+- Forgot password flow confirmed working
+
+**PostgreSQL password rotated**
+- Old password was exposed in a chat session
+- Rotated via `ALTER USER chalk PASSWORD '...'` and updated the systemd override to match
+
+**Ledgr API port locked to localhost**
+- `ledgr-api.service` was binding to `0.0.0.0:5000` — directly reachable from the internet
+- nginx was already proxying `ledgr.nherrera.dev` → `localhost:5000` correctly
+- Fixed by replacing `Environment=PORT=5000` with `Environment=ASPNETCORE_URLS=http://localhost:5000` in the base service file
+- Port now shows as `127.0.0.1:5000` only
+
+---
+
+### 2026-04-11 — SQLite → PostgreSQL Migration (Production)
+
+**Full database migration completed on Hetzner VPS**
+- Installed PostgreSQL 16, created `chalk` database and `chalk` user
+- Dropped all old SQLite-generated EF Core migrations (TEXT columns for UUIDs — incompatible with Npgsql)
+- Regenerated a single clean migration: `20260411145117_InitialCreate` (native `uuid` columns)
+- Applied migration to fresh PostgreSQL schema — all tables created correctly
+- App restarted and confirmed running: `Application started. Listening on http://localhost:5115`
+- New migrations committed to GitHub so future deploys don't break
+
+**Root cause of `operator does not exist: text = uuid`**
+- Old SQLite migrations typed all UUID columns as `TEXT`
+- Npgsql sends `uuid`-typed parameters — PostgreSQL refuses to compare `text` with `uuid`
+- Fix: delete old migrations entirely, regenerate with Npgsql provider so columns get native `uuid` type
+
+**`Program.cs` changes**
+- Added `AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true)` for `DateTime` compatibility
+- Added `opt.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))` to suppress EF Core 9 crash on nav property mismatch
+- Added `using Microsoft.EntityFrameworkCore.Diagnostics`
+
+---
+
 ### 2026-04-10 — Security: Keystore Exposure
 
 **`tmp.b64` was committed to the public GitHub repo**
@@ -96,23 +143,11 @@
 
 ## Pending / Known Issues
 
-### Must-do before next deploy
+### VPS / Infrastructure
 
-- [ ] **Migrate EF Core to PostgreSQL** — All existing SQLite migrations are now invalid. Steps:
-  1. Delete everything in `Kalendr.API/Migrations/` (or archive it)
-  2. `dotnet ef migrations add InitialPostgres`
-  3. `dotnet ef database update` against a running Postgres instance
-
-- [ ] **Install PostgreSQL on Hetzner VPS**
-  ```bash
-  apt install -y postgresql postgresql-contrib
-  sudo -u postgres psql -c "CREATE USER chalk WITH PASSWORD 'your-password';"
-  sudo -u postgres psql -c "CREATE DATABASE chalk OWNER chalk;"
-  ```
-  Then set the `ConnectionStrings__Default` env var in the systemd service unit.
-
-- [ ] **Update systemd service unit** to inject the Postgres connection string:
-  Add `Environment="ConnectionStrings__Default=Host=localhost;Port=5432;Database=chalk;Username=chalk;Password=..."` to `/etc/systemd/system/kalendr.service`
+- [ ] **Run services as non-root** — both `kalendr` and `ledgr-api` run as root. Create a dedicated system user and update the service files. Low urgency but worth doing before the app grows.
+- [ ] **Add swap** — currently 0B swap. With two .NET services on a 4GB box it's fine, but worth adding 2GB as a safety net.
+- [ ] **Delete `kalendr.db`** — old SQLite file still at `/opt/Kalendr/Kalendr.API/kalendr.db`. Not used, just dead weight.
 
 ### Code quality
 

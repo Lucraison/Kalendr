@@ -149,24 +149,6 @@ class ApiService {
           })),
           (j) => CalendarEvent.fromJson(j));
 
-  Future<int> updateSeries(String title, String? groupId, int startHour, int startMinute,
-      int durationMinutes, bool isAllDay, {String? color, String? description, List<String>? sharedGroupIds}) =>
-      _handle(() => http.post(Uri.parse('$_base/api/events/update-series'),
-          headers: _headers,
-          body: jsonEncode({
-            'title': title,
-            'groupId': groupId,
-            'startHour': startHour,
-            'startMinute': startMinute,
-            'durationMinutes': durationMinutes,
-            'isWorkHours': isAllDay,
-            'isAllDay': false,
-            'color': color,
-            'description': description,
-            'sharedGroupIds': sharedGroupIds,
-          })),
-          (j) => (j['updated'] as int?) ?? 0);
-
   Future<void> patchEventMetadata(String eventId, String title, String? description,
       {String? color, List<String>? sharedGroupIds}) =>
       _handle(() => http.patch(Uri.parse('$_base/api/events/$eventId/metadata'),
@@ -182,14 +164,6 @@ class ApiService {
   Future<void> deleteEvent(String? groupId, String eventId) =>
       _handle(() => http.delete(Uri.parse('$_base/api/events/$eventId'), headers: _headers),
           (_) => null);
-
-  Future<int> deleteEventSeries(String title, String? groupId) {
-    final params = <String, String>{'title': title};
-    if (groupId != null) params['groupId'] = groupId;
-    final uri = Uri.parse('$_base/api/events/delete-series').replace(queryParameters: params);
-    return _handle(() => http.delete(uri, headers: _headers),
-        (j) => (j['deleted'] as int?) ?? 0);
-  }
 
   Future<int> updateRecurrenceSeries(String recurrenceId, {
     required String title,

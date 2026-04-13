@@ -46,20 +46,6 @@ public record EventDto(
 
 public record BatchCreateEventRequest(List<CreateEventRequest> Events);
 
-// Update all events with the same title+owner — keeps each event's date, applies new time
-public record UpdateSeriesRequest(
-    string Title,
-    Guid? GroupId,
-    int StartHour,
-    int StartMinute,
-    int DurationMinutes,
-    bool IsWorkHours,
-    bool IsAllDay = false,
-    string? Color = null,
-    string? Description = null,
-    List<Guid>? SharedGroupIds = null
-);
-
 public record UpdateRecurrenceSeriesRequest(
     string Title,
     string? Description,

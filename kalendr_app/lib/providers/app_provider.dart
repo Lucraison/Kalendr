@@ -121,6 +121,7 @@ class AppProvider extends ChangeNotifier {
     await auth.save(r, api);
     notifyListeners();
     _startPolling();
+    _connectHub();
   }
 
   Future<void> joinHubGroup(String groupId) => hub.joinGroup(groupId);

@@ -160,6 +160,9 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
             || !BCrypt.Net.BCrypt.Verify(req.Code, user.PasswordResetCode))
             return BadRequest(new { message = "Invalid or expired code." });
 
+        if (req.NewPassword.Length < 6)
+            return BadRequest(new { message = "Password must be at least 6 characters." });
+
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
         user.PasswordResetCode = null;
         user.PasswordResetCodeExpiry = null;
