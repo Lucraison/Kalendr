@@ -892,17 +892,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               final firstShift = shifts.reduce((a, b) =>
                   a.event.startTime.isBefore(b.event.startTime) ? a : b);
               return GestureDetector(
-                onTap: () => Navigator.push(context, slideRoute(EventDetailScreen(
-                  event: firstShift.event,
-                  group: firstShift.group,
-                  color: _kWorkBlue,
-                  availableGroups: const [],
-                  onUpdated: () => setState(() {}),
-                  onDeleted: () => setState(() {
-                    _eventsByDay.forEach((k, v) =>
-                        v.removeWhere((x) => x.event.id == firstShift.event.id));
-                  }),
-                ))),
+                onTap: () => _showWorkShiftSheet(name, sortedShifts, firstShift.group),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(
                     width: 30, height: 30,
@@ -920,6 +910,83 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ]),
       ),
+    );
+  }
+
+  void _showWorkShiftSheet(String username, List<_EventWithGroup> sortedShifts, Group? group) {
+    final provider = context.read<AppProvider>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: KalendrTheme.surface(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 16,
+            bottom: MediaQuery.of(context).padding.bottom + 28,
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            )),
+            const SizedBox(height: 20),
+            // Avatar + name row
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: _kWorkBlue),
+                child: Center(child: Text(
+                  username.isNotEmpty ? username[0].toUpperCase() : '?',
+                  style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                )),
+              ),
+              const SizedBox(width: 12),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(username, style: GoogleFonts.nunito(
+                  fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+                if (group != null)
+                  Row(children: [
+                    Icon(Icons.group_rounded, size: 13, color: KalendrTheme.muted(context)),
+                    const SizedBox(width: 4),
+                    Text(group.name, style: GoogleFonts.nunito(
+                      fontSize: 13, color: KalendrTheme.subtext(context))),
+                  ]),
+              ]),
+            ]),
+            const SizedBox(height: 20),
+            // Shift rows
+            ...sortedShifts.map((ew) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _kWorkBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.work_outline_rounded, size: 16, color: _kWorkBlue),
+                ),
+                const SizedBox(width: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    DateFormat('EEE, MMM d').format(ew.event.startTime),
+                    style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.subtext(context)),
+                  ),
+                  Text(
+                    '${provider.formatDateTime(ew.event.startTime)} – ${provider.formatDateTime(ew.event.endTime)}',
+                    style: GoogleFonts.nunito(
+                      fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context)),
+                  ),
+                ]),
+              ]),
+            )),
+          ]),
+        );
+      },
     );
   }
 

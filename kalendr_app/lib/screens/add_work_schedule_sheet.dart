@@ -482,15 +482,21 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
             return Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
               child: Row(children: [
-                Icon(Icons.schedule_rounded, size: 16, color: KalendrTheme.muted(context)),
-                const SizedBox(width: 10),
-                Text(
-                  _globalShifts.length > 1 ? '${i + 1}' : s.hours,
-                  style: GoogleFonts.nunito(
+                if (i == 0) ...[
+                  Icon(Icons.schedule_rounded, size: 16, color: KalendrTheme.muted(context)),
+                  const SizedBox(width: 10),
+                  Text(s.hours, style: GoogleFonts.nunito(
                     fontSize: 13, fontWeight: FontWeight.w600,
-                    color: _globalShifts.length > 1 ? _kWorkColor : KalendrTheme.subtext(context),
+                    color: KalendrTheme.subtext(context),
+                  )),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.only(left: 26),
+                    child: Text('↳', style: GoogleFonts.nunito(
+                      fontSize: 13, fontWeight: FontWeight.w600,
+                      color: KalendrTheme.muted(context),
+                    )),
                   ),
-                ),
                 const Spacer(),
                 _timePill(shift.start, () async {
                   final t = await _pickTime(shift.start);
