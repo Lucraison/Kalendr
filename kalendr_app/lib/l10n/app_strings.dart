@@ -112,6 +112,7 @@ class AppStrings {
   String get createOrJoinGroupToStart => _t('createOrJoinGroupToStart');
   String get goToGroups => _t('goToGroups');
   String get workingToday => _t('workingToday');
+  String workingOn(String day) => _t('workingOn').replaceAll('{day}', day);
   String greetingMorning(String name) => _t('greetingMorning').replaceAll('{name}', name);
   String greetingAfternoon(String name) => _t('greetingAfternoon').replaceAll('{name}', name);
   String greetingEvening(String name) => _t('greetingEvening').replaceAll('{name}', name);
@@ -356,6 +357,7 @@ class AppStrings {
       'createOrJoinGroupToStart': 'Create or join a group to see everyone\'s schedule.',
       'goToGroups': 'Go to Groups',
       'workingToday': 'Working today',
+      'workingOn': 'Working {day}',
       'greetingMorning': 'Good morning, {name}! 🌅',
       'greetingAfternoon': 'Good afternoon, {name}! ☀️',
       'greetingEvening': 'Good evening, {name}! 🌙',
@@ -600,6 +602,7 @@ class AppStrings {
       'createOrJoinGroupToStart': 'Créez ou rejoignez un groupe pour voir les horaires.',
       'goToGroups': 'Aller aux Groupes',
       'workingToday': 'Au travail aujourd\'hui',
+      'workingOn': 'Au travail {day}',
       'greetingMorning': 'Bonjour, {name} ! 🌅',
       'greetingAfternoon': 'Bon après-midi, {name} ! ☀️',
       'greetingEvening': 'Bonsoir, {name} ! 🌙',
@@ -844,6 +847,7 @@ class AppStrings {
       'createOrJoinGroupToStart': 'Crea o únete a un grupo para ver los horarios.',
       'goToGroups': 'Ir a Grupos',
       'workingToday': 'Trabajando hoy',
+      'workingOn': 'Trabajando el {day}',
       'greetingMorning': '¡Buenos días, {name}! 🌅',
       'greetingAfternoon': '¡Buenas tardes, {name}! ☀️',
       'greetingEvening': '¡Buenas noches, {name}! 🌙',

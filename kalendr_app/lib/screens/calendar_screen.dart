@@ -873,15 +873,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Row(children: [
           Icon(Icons.work_outline_rounded, size: 15, color: _kWorkBlue),
           const SizedBox(width: 8),
-          Text(context.s.workingToday, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: _kWorkBlue)),
+          Text(
+            isSameDay(_selectedDay, DateTime.now())
+                ? context.s.workingToday
+                : context.s.workingOn(DateFormat('EEEE').format(_selectedDay)),
+            style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: _kWorkBlue),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Wrap(spacing: 6, runSpacing: 4, children: byUser.entries.map((entry) {
               final name = entry.value.username;
               final shifts = entry.value.shifts;
-              final earliest = shifts.map((e) => e.event.startTime).reduce((a, b) => a.isBefore(b) ? a : b);
-              final latest = shifts.map((e) => e.event.endTime).reduce((a, b) => a.isAfter(b) ? a : b);
-              final hours = '${context.read<AppProvider>().formatDateTime(earliest)}–${context.read<AppProvider>().formatDateTime(latest)}';
+              final provider = context.read<AppProvider>();
+              final sortedShifts = [...shifts]..sort((a, b) => a.event.startTime.compareTo(b.event.startTime));
+              final hours = sortedShifts
+                  .map((s) => '${provider.formatDateTime(s.event.startTime)}–${provider.formatDateTime(s.event.endTime)}')
+                  .join(',  ');
               final firstShift = shifts.reduce((a, b) =>
                   a.event.startTime.isBefore(b.event.startTime) ? a : b);
               return GestureDetector(
