@@ -18,7 +18,8 @@ import 'add_work_schedule_sheet.dart';
 import 'event_detail_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final void Function(int)? onNavigateToTab;
+  const CalendarScreen({super.key, this.onNavigateToTab});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -493,6 +494,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             firstDay: DateTime(today.year - 1),
                             lastDay: DateTime(today.year + 5),
                             focusedDay: _focusedDay,
+                            startingDayOfWeek: context.watch<AppProvider>().startOnMonday
+                                ? StartingDayOfWeek.monday
+                                : StartingDayOfWeek.sunday,
                             calendarFormat: _calendarFormat,
                             sixWeekMonthsEnforced: true,
                             pageAnimationDuration: const Duration(milliseconds: 180),
@@ -601,18 +605,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 36),
                                 child: Column(children: [
-                                  Text(isSameDay(_selectedDay, today) ? '🌿' : '📭',
-                                      style: const TextStyle(fontSize: 36)),
+                                  Text(
+                                    _groups.isEmpty ? '👋' : (isSameDay(_selectedDay, today) ? '🌿' : '📭'),
+                                    style: const TextStyle(fontSize: 36),
+                                  ),
                                   const SizedBox(height: 10),
                                   Text(
-                                    isSameDay(_selectedDay, today)
-                                        ? (_groups.isEmpty ? s.couldNotLoadEvents : s.freeDay)
-                                        : s.nothingScheduled,
+                                    _groups.isEmpty
+                                        ? s.welcomeToChalk
+                                        : (isSameDay(_selectedDay, today) ? s.freeDay : s.nothingScheduled),
                                     style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context)),
                                   ),
                                   if (_groups.isEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(s.goToGroupsToStart, style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+                                    const SizedBox(height: 6),
+                                    Text(s.createOrJoinGroupToStart,
+                                        style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+                                    const SizedBox(height: 16),
+                                    GestureDetector(
+                                      onTap: () => widget.onNavigateToTab?.call(1),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: kPrimary,
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Text(s.goToGroups,
+                                            style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                                      ),
+                                    ),
                                   ],
                                 ]),
                               )
@@ -733,7 +753,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                             if (height > 36)
                               Text(
-                                '${DateFormat('HH:mm').format(s)} – ${DateFormat('HH:mm').format(e)}',
+                                '${context.read<AppProvider>().formatDateTime(s)} – ${context.read<AppProvider>().formatDateTime(e)}',
                                 style: GoogleFonts.nunito(fontSize: 10, color: KalendrTheme.muted(context)),
                               ),
                           ],
@@ -861,19 +881,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
               final shifts = entry.value.shifts;
               final earliest = shifts.map((e) => e.event.startTime).reduce((a, b) => a.isBefore(b) ? a : b);
               final latest = shifts.map((e) => e.event.endTime).reduce((a, b) => a.isAfter(b) ? a : b);
-              final hours = '${DateFormat('HH:mm').format(earliest)}–${DateFormat('HH:mm').format(latest)}';
-              return Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: _kWorkBlue),
-                  child: Center(child: Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
-                  )),
-                ),
-                const SizedBox(width: 4),
-                Text(hours, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600, color: _kWorkBlue)),
-              ]);
+              final hours = '${context.read<AppProvider>().formatDateTime(earliest)}–${context.read<AppProvider>().formatDateTime(latest)}';
+              final firstShift = shifts.reduce((a, b) =>
+                  a.event.startTime.isBefore(b.event.startTime) ? a : b);
+              return GestureDetector(
+                onTap: () => Navigator.push(context, slideRoute(EventDetailScreen(
+                  event: firstShift.event,
+                  group: firstShift.group,
+                  color: _kWorkBlue,
+                  availableGroups: const [],
+                  onUpdated: () => setState(() {}),
+                  onDeleted: () => setState(() {
+                    _eventsByDay.forEach((k, v) =>
+                        v.removeWhere((x) => x.event.id == firstShift.event.id));
+                  }),
+                ))),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 30, height: 30,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: _kWorkBlue),
+                    child: Center(child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+                      style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                    )),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(hours, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600, color: _kWorkBlue)),
+                ]),
+              );
             }).toList()),
           ),
         ]),
@@ -883,7 +918,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _eventTile(_EventWithGroup ew) {
     final color = _eventColor(ew);
-    final timeStr = ew.event.isAllDay ? context.s.allDay : DateFormat('HH:mm').format(ew.event.startTime);
+    final timeStr = ew.event.isAllDay ? context.s.allDay : context.read<AppProvider>().formatDateTime(ew.event.startTime);
 
     return GestureDetector(
       onTap: () => Navigator.push(context, slideRoute(EventDetailScreen(

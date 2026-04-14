@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../l10n/app_strings.dart';
 import '../models/models.dart';
+import '../providers/app_provider.dart';
 import '../theme.dart';
 import 'calendar_picker_sheet.dart';
 
@@ -223,11 +225,13 @@ class _AddEventSheetState extends State<AddEventSheet> {
   String? _color;
   List<String> _sharedGroupIds = [];
 
-  Color get _accent => _color != null ? hexToColor(_color!) : _accent;
+  Color get _accent => hexToColor(_color ?? _colorOptions[0]);
 
   static const _colorOptions = [
-    '#FF6B6B', '#8338EC', '#3B82F6', '#0D9488',
-    '#F97316', '#06D6A0', '#FFBE0B',
+    '#EF4444', '#FF6B6B', '#F97316', '#FFBE0B',
+    '#22C55E', '#14B8A6', '#3B82F6',
+    '#6366F1', '#8B5CF6', '#EC4899', '#06D6A0',
+    '#0EA5E9', '#64748B', '#F43F5E',
   ];
 
   // Weekday labels are loaded from AppStrings at build time via context.s
@@ -494,6 +498,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: _colorOptions.map((hex) {
                 final col = hexToColor(hex);
                 final selected = _color?.toUpperCase() == hex.toUpperCase();
@@ -808,7 +813,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(8)),
-        child: Text(t.format(context), style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context))),
+        child: Text(context.read<AppProvider>().formatTime(t), style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context))),
       ),
     );
   }
@@ -900,7 +905,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
   Widget _dateRow(String label, DateTime dt, VoidCallback onDateTap, {VoidCallback? onTimeTap, IconData? icon, bool isStart = false, bool dateOnly = false, bool timeOnly = false}) {
     final IconData rowIcon = icon ?? (isStart ? Icons.login_rounded : Icons.logout_rounded);
     final dateFmt = DateFormat('EEE, MMM d');
-    final timeFmt = DateFormat('HH:mm');
+    final provider = context.read<AppProvider>();
     final showTime = !_allDay && !dateOnly;
 
     Widget chip(String text, VoidCallback onTap) => GestureDetector(
@@ -926,7 +931,7 @@ class _AddEventSheetState extends State<AddEventSheet> {
         if (!timeOnly) chip(showTime ? dateFmt.format(dt) : DateFormat('EEE, MMM d, y').format(dt), onDateTap),
         if (showTime) ...[
           if (!timeOnly) const SizedBox(width: 6),
-          chip(timeFmt.format(dt), onTimeTap ?? onDateTap),
+          chip(provider.formatDateTime(dt), onTimeTap ?? onDateTap),
         ],
       ]),
     );

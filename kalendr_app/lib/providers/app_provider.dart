@@ -26,6 +26,37 @@ class AppProvider extends ChangeNotifier {
   String _locale = 'en';
   String get locale => _locale;
 
+  bool _use24hFormat = false;
+  bool get use24hFormat => _use24hFormat;
+
+  bool _startOnMonday = true;
+  bool get startOnMonday => _startOnMonday;
+
+  String formatTime(TimeOfDay t) {
+    if (_use24hFormat) {
+      final h = t.hour.toString().padLeft(2, '0');
+      final m = t.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    }
+    final hour = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final period = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$m $period';
+  }
+
+  /// Format the time portion of a DateTime according to user preference.
+  String formatDateTime(DateTime dt) {
+    if (_use24hFormat) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    }
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour < 12 ? 'AM' : 'PM';
+    return '$hour:$m $period';
+  }
+
   Timer? _notifTimer;
   SharedPreferences? _prefs;
 
@@ -38,6 +69,8 @@ class AppProvider extends ChangeNotifier {
     else if (saved == 'dark') _themeMode = ThemeMode.dark;
     else _themeMode = ThemeMode.system;
     _locale = prefs.getString('locale') ?? 'en';
+    _use24hFormat = prefs.getBool('use24hFormat') ?? false;
+    _startOnMonday = prefs.getBool('startOnMonday') ?? true;
     _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
     await auth.load(api);
     _initialized = true;
@@ -105,6 +138,20 @@ class AppProvider extends ChangeNotifier {
     _locale = lang;
     final prefs = await _getPrefs();
     await prefs.setString('locale', lang);
+    notifyListeners();
+  }
+
+  Future<void> set24hFormat(bool value) async {
+    _use24hFormat = value;
+    final prefs = await _getPrefs();
+    await prefs.setBool('use24hFormat', value);
+    notifyListeners();
+  }
+
+  Future<void> setStartOnMonday(bool value) async {
+    _startOnMonday = value;
+    final prefs = await _getPrefs();
+    await prefs.setBool('startOnMonday', value);
     notifyListeners();
   }
 

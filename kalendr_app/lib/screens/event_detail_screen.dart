@@ -39,11 +39,9 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   List<Reaction> _reactions = [];
-  List<EventRsvp> _rsvps = [];
   List<EventComment> _comments = [];
   Map<String, List<Reaction>> _groupedReactions = {};
   bool _reactionsLoaded = false;
-  bool _rsvpsLoaded = false;
   bool _commentsLoaded = false;
   final _commentCtrl = TextEditingController();
   bool _postingComment = false;
@@ -54,7 +52,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   void initState() {
     super.initState();
     _loadReactions();
-    _loadRsvps();
     _loadComments();
   }
 
@@ -78,15 +75,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (mounted) setState(() { _reactions = r; _groupedReactions = _buildGrouped(r); _reactionsLoaded = true; });
     } catch (_) {
       if (mounted) setState(() => _reactionsLoaded = true);
-    }
-  }
-
-  Future<void> _loadRsvps() async {
-    try {
-      final r = await context.read<AppProvider>().api.getRsvps(widget.event.id);
-      if (mounted) setState(() { _rsvps = r; _rsvpsLoaded = true; });
-    } catch (_) {
-      if (mounted) setState(() => _rsvpsLoaded = true);
     }
   }
 
@@ -132,28 +120,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       });
     } catch (_) {}
   }
-
-  Future<void> _toggleRsvp(String status) async {
-    HapticFeedback.selectionClick();
-    try {
-      final myId = context.read<AppProvider>().auth.userId ?? '';
-      final result = await context.read<AppProvider>().api.setRsvp(widget.event.id, status);
-      if (!mounted) return;
-      setState(() {
-        _rsvps.removeWhere((r) => r.userId == myId);
-        if (result != null) _rsvps.add(result);
-      });
-      final s = context.s;
-      final removed = result == null;
-      final label = removed ? 'RSVP removed' : {
-        'going': s.going,
-        'maybe': s.maybe,
-        'declined': s.cantGo,
-      }[status] ?? 'RSVP updated';
-      showSnack(context, label, color: removed ? Colors.grey.shade600 : const Color(0xFF06D6A0));
-    } catch (_) {}
-  }
-
 
   Future<void> _toggleGroupShare(String groupId) async {
     final e = widget.event;
@@ -316,15 +282,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final isOwner = widget.event.createdByUserId == currentUserId;
 
     final e = widget.event;
+    final provider = context.read<AppProvider>();
     final dateStr = DateFormat('EEE, MMM d, y').format(e.startTime);
-    final startStr = e.isAllDay ? s.allDay : DateFormat('HH:mm').format(e.startTime);
-    final endStr = e.isAllDay ? '' : DateFormat('HH:mm').format(e.endTime);
+    final startStr = e.isAllDay ? s.allDay : provider.formatDateTime(e.startTime);
+    final endStr = e.isAllDay ? '' : provider.formatDateTime(e.endTime);
     final grouped = _groupedReactions;
-
-    final myRsvp = _rsvps.where((r) => r.userId == currentUserId).firstOrNull;
-    final goingCount = _rsvps.where((r) => r.status == RsvpStatus.going).length;
-    final maybeCount = _rsvps.where((r) => r.status == RsvpStatus.maybe).length;
-    final declinedCount = _rsvps.where((r) => r.status == RsvpStatus.declined).length;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -394,9 +356,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 e.startTime.month == e.endTime.month &&
                                 e.startTime.day == e.endTime.day;
                             final endPart = sameDay
-                                ? DateFormat('HH:mm').format(e.endTime)
-                                : '${DateFormat('HH:mm').format(e.endTime)} (${DateFormat('MMM d').format(e.endTime)})';
-                            return '${DateFormat('EEE, MMM d').format(e.startTime)}  ·  ${DateFormat('HH:mm').format(e.startTime)} – $endPart';
+                                ? provider.formatDateTime(e.endTime)
+                                : '${provider.formatDateTime(e.endTime)} (${DateFormat('MMM d').format(e.endTime)})';
+                            return '${DateFormat('EEE, MMM d').format(e.startTime)}  ·  ${provider.formatDateTime(e.startTime)} – $endPart';
                           }(),
                     style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: widget.color.withOpacity(0.85)),
                   ),
@@ -469,17 +431,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // RSVP
-                _sectionHeader(s.areYouGoing),
-                Row(children: [
-                  _rsvpButton(s.going, RsvpStatus.going, Icons.check_circle_outline_rounded, const Color(0xFF06D6A0), myRsvp, goingCount),
-                  const SizedBox(width: 8),
-                  _rsvpButton(s.maybe, RsvpStatus.maybe, Icons.help_outline_rounded, const Color(0xFFFFBE0B), myRsvp, maybeCount),
-                  const SizedBox(width: 8),
-                  _rsvpButton(s.cantGo, RsvpStatus.declined, Icons.cancel_outlined, kPrimary, myRsvp, declinedCount),
-                ]),
-                const SizedBox(height: 20),
-
                 // Reactions
                 _sectionHeader(s.reactions),
                 Container(
@@ -506,12 +457,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             borderRadius: BorderRadius.circular(12),
                             border: myReacted ? Border.all(color: widget.color.withOpacity(0.3)) : null,
                           ),
-                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text(emoji, style: const TextStyle(fontSize: 22)),
                             if (count > 0) ...[
-                              const SizedBox(height: 2),
+                              const SizedBox(width: 4),
                               Text('$count',
-                                  style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700,
+                                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700,
                                       color: myReacted ? widget.color : KalendrTheme.muted(context))),
                             ],
                           ]),
@@ -715,35 +666,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return DateFormat('MMM d').format(dt);
-  }
-
-  Widget _rsvpButton(String label, RsvpStatus status, IconData icon, Color color, EventRsvp? myRsvp, int count) {
-    final active = myRsvp?.status == status;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _toggleRsvp(status.name),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: active ? color.withOpacity(0.12) : KalendrTheme.surface(context),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: active ? color.withOpacity(0.5) : KalendrTheme.divider(context)),
-            boxShadow: active ? [BoxShadow(color: color.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))] : null,
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 20, color: active ? color : KalendrTheme.muted(context)),
-            const SizedBox(height: 4),
-            Text(label, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700,
-                color: active ? color : KalendrTheme.subtext(context))),
-            if (count > 0) ...[
-              const SizedBox(height: 2),
-              Text('$count', style: GoogleFonts.nunito(fontSize: 11, color: active ? color : KalendrTheme.muted(context))),
-            ],
-          ]),
-        ),
-      ),
-    );
   }
 
   Future<void> _confirmDelete(BuildContext context) async {

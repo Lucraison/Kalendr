@@ -113,7 +113,7 @@ class _MainNavState extends State<_MainNav> {
     final mutedColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
 
     final screens = [
-      const CalendarScreen(),
+      CalendarScreen(onNavigateToTab: (i) => setState(() => _index = i)),
       const GroupsScreen(),
       const NotificationsScreen(),
       ProfileScreen(onNavigateToTab: (i) => setState(() => _index = i)),

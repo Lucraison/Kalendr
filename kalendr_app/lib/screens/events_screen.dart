@@ -515,9 +515,10 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Widget _eventCard(CalendarEvent e, Color color, bool isOwner, String? picPath) {
+    final provider = context.read<AppProvider>();
     final dateStr = e.isAllDay
         ? DateFormat('EEE, MMM d').format(e.startTime)
-        : DateFormat('EEE, MMM d · HH:mm').format(e.startTime);
+        : '${DateFormat('EEE, MMM d').format(e.startTime)} · ${provider.formatDateTime(e.startTime)}';
 
     return Dismissible(
       key: Key(e.id.toString()),

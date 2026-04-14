@@ -16,8 +16,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
 {
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("Default")
-        ?? throw new InvalidOperationException("Connection string 'Default' is not configured."));
+    var cs = builder.Configuration.GetConnectionString("Default")
+        ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
+
+    // SQLite connection strings start with "Data Source="; everything else is treated as Postgres.
+    if (cs.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+        opt.UseSqlite(cs);
+    else
+        opt.UseNpgsql(cs);
+
     opt.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
 

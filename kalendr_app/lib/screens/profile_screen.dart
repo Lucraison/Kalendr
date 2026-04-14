@@ -437,6 +437,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         Divider(height: 1, color: KalendrTheme.divider(context)),
 
+        // Time format toggle
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          child: Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: kPrimary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.schedule_rounded, color: kPrimary, size: 18),
+            ),
+            const SizedBox(width: 14),
+            Text(context.s.timeFormat24h, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+            const Spacer(),
+            Switch(
+              value: provider.use24hFormat,
+              onChanged: provider.set24hFormat,
+              activeColor: kPrimary,
+            ),
+          ]),
+        ),
+        Divider(height: 1, color: KalendrTheme.divider(context)),
+
+        // Week starts on Monday toggle
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          child: Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: kPrimary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.view_week_rounded, color: kPrimary, size: 18),
+            ),
+            const SizedBox(width: 14),
+            Text(context.s.weekStartsMonday, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
+            const Spacer(),
+            Switch(
+              value: provider.startOnMonday,
+              onChanged: provider.setStartOnMonday,
+              activeColor: kPrimary,
+            ),
+          ]),
+        ),
+        Divider(height: 1, color: KalendrTheme.divider(context)),
+
         // Change password
         ListTile(
           onTap: () => _changePassword(provider),

@@ -443,7 +443,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => Share.share('Join my group "${g.name}" on Kalendr!\nInvite code: ${g.inviteCode}'),
+                      onTap: () => Share.share('Join my group "${g.name}" on Chalk!\nInvite code: ${g.inviteCode}'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),

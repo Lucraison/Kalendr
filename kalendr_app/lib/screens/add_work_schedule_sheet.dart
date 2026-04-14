@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../l10n/app_strings.dart';
 import '../models/models.dart';
+import '../providers/app_provider.dart';
 import '../theme.dart';
 import 'add_event_sheet.dart';
 import 'calendar_picker_sheet.dart';
@@ -46,6 +48,37 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   static const _defaultEnd = TimeOfDay(hour: 17, minute: 0);
   static const _secondShiftStart = TimeOfDay(hour: 18, minute: 0);
   static const _secondShiftEnd = TimeOfDay(hour: 22, minute: 0);
+
+  // ── TimeOfDay arithmetic ──────────────────────────────────────────────────
+
+  static int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  static TimeOfDay _fromMinutes(int m) {
+    final clamped = m.clamp(0, 23 * 60 + 59);
+    return TimeOfDay(hour: clamped ~/ 60, minute: clamped % 60);
+  }
+
+  /// Ensures shifts are ordered with no overlaps.
+  /// Rules:
+  ///   • Each shift's end must be ≥ start + 30 min (auto-corrects to start + 60)
+  ///   • Each shift's start must be ≥ previous shift's end + 15 min (auto-pushes forward)
+  List<({TimeOfDay start, TimeOfDay end})> _correctShifts(
+      List<({TimeOfDay start, TimeOfDay end})> shifts) {
+    if (shifts.isEmpty) return shifts;
+    final result = <({TimeOfDay start, TimeOfDay end})>[];
+    for (int i = 0; i < shifts.length; i++) {
+      var s = shifts[i].start;
+      var e = shifts[i].end;
+      if (i > 0) {
+        final minStart = _fromMinutes(_toMinutes(result[i - 1].end) + 15);
+        if (_toMinutes(s) < _toMinutes(minStart)) s = minStart;
+      }
+      final minEnd = _fromMinutes(_toMinutes(s) + 30);
+      if (_toMinutes(e) < _toMinutes(minEnd)) e = _fromMinutes(_toMinutes(s) + 60);
+      result.add((start: s, end: e));
+    }
+    return result;
+  }
 
   DateTime _untilForPreset(String label, DateTime from) {
     switch (label) {
@@ -465,7 +498,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                     setState(() {
                       final updated = List<({TimeOfDay start, TimeOfDay end})>.from(_globalShifts);
                       updated[i] = (start: t, end: shift.end);
-                      _globalShifts = updated;
+                      _globalShifts = _correctShifts(updated);
                       _applyGlobalHours();
                     });
                   }
@@ -477,7 +510,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                     setState(() {
                       final updated = List<({TimeOfDay start, TimeOfDay end})>.from(_globalShifts);
                       updated[i] = (start: shift.start, end: t);
-                      _globalShifts = updated;
+                      _globalShifts = _correctShifts(updated);
                       _applyGlobalHours();
                     });
                   }
@@ -504,10 +537,9 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
             GestureDetector(
               onTap: () {
                 setState(() {
-                  _globalShifts = [
-                    ..._globalShifts,
-                    (start: _secondShiftStart, end: _secondShiftEnd),
-                  ];
+                  final afterEnd = _fromMinutes(_toMinutes(_globalShifts.last.end) + 60);
+                  final proposed = (start: afterEnd, end: _fromMinutes(_toMinutes(afterEnd) + 120));
+                  _globalShifts = _correctShifts([..._globalShifts, proposed]);
                   _applyGlobalHours();
                 });
               },
@@ -548,8 +580,10 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                     Text(wdNames[weekday - 1],
                         style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.text(context)))
                   else
-                    Text('  ${i + 1}',
-                        style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: _kWorkColor)),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text('↳', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: KalendrTheme.muted(context))),
+                    ),
                   const Spacer(),
                   _timePill(shift.start, () async {
                     final t = await _pickTime(shift.start);
@@ -557,7 +591,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                       setState(() {
                         final updated = List<({TimeOfDay start, TimeOfDay end})>.from(shifts);
                         updated[i] = (start: t, end: shift.end);
-                        _dayHours[weekday] = updated;
+                        _dayHours[weekday] = _correctShifts(updated);
                       });
                     }
                   }),
@@ -568,7 +602,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
                       setState(() {
                         final updated = List<({TimeOfDay start, TimeOfDay end})>.from(shifts);
                         updated[i] = (start: shift.start, end: t);
-                        _dayHours[weekday] = updated;
+                        _dayHours[weekday] = _correctShifts(updated);
                       });
                     }
                   }),
@@ -593,10 +627,9 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _dayHours[weekday] = [
-                      ...shifts,
-                      (start: _secondShiftStart, end: _secondShiftEnd),
-                    ];
+                    final afterEnd = _fromMinutes(_toMinutes(shifts.last.end) + 60);
+                    final proposed = (start: afterEnd, end: _fromMinutes(_toMinutes(afterEnd) + 120));
+                    _dayHours[weekday] = _correctShifts([...shifts, proposed]);
                   });
                 },
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -619,15 +652,18 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: const BoxConstraints(minWidth: 90),
         margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: _kWorkColor.withOpacity(0.08),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: _kWorkColor.withOpacity(0.3)),
         ),
-        child: Text(t.format(context),
-            style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: _kWorkColor)),
+        child: Center(
+          child: Text(context.read<AppProvider>().formatTime(t),
+              style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: _kWorkColor)),
+        ),
       ),
     );
   }

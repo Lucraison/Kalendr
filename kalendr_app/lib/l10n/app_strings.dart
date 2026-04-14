@@ -45,6 +45,8 @@ class AppStrings {
   String get upcoming => _t('upcoming');
   String get settings => _t('settings');
   String get notifications => _t('notifications');
+  String get timeFormat24h => _t('timeFormat24h');
+  String get weekStartsMonday => _t('weekStartsMonday');
   String get events => _t('events');
   String get groups => _t('groups');
   String get appearance => _t('appearance');
@@ -106,6 +108,9 @@ class AppStrings {
   String get onlyVisibleToYou => _t('onlyVisibleToYou');
   String get couldNotLoadEvents => _t('couldNotLoadEvents');
   String get goToGroupsToStart => _t('goToGroupsToStart');
+  String get welcomeToChalk => _t('welcomeToChalk');
+  String get createOrJoinGroupToStart => _t('createOrJoinGroupToStart');
+  String get goToGroups => _t('goToGroups');
   String get workingToday => _t('workingToday');
   String greetingMorning(String name) => _t('greetingMorning').replaceAll('{name}', name);
   String greetingAfternoon(String name) => _t('greetingAfternoon').replaceAll('{name}', name);
@@ -292,6 +297,8 @@ class AppStrings {
       'upcoming': 'Upcoming',
       'settings': 'Settings',
       'notifications': 'Notifications',
+      'timeFormat24h': '24-hour time',
+      'weekStartsMonday': 'Week starts on Monday',
       'events': 'Events',
       'groups': 'Groups',
       'appearance': 'Appearance',
@@ -345,6 +352,9 @@ class AppStrings {
       'onlyVisibleToYou': 'Only visible to you',
       'couldNotLoadEvents': 'Could not load events',
       'goToGroupsToStart': 'Go to Groups to get started',
+      'welcomeToChalk': 'Welcome to Chalk!',
+      'createOrJoinGroupToStart': 'Create or join a group to see everyone\'s schedule.',
+      'goToGroups': 'Go to Groups',
       'workingToday': 'Working today',
       'greetingMorning': 'Good morning, {name}! 🌅',
       'greetingAfternoon': 'Good afternoon, {name}! ☀️',
@@ -411,7 +421,7 @@ class AppStrings {
       'endDate': 'End date',
       'startTimeInPast': 'Start time is in the past',
       'scheduleNameHint': 'Schedule name (e.g. Work)',
-      'weekdayShort': 'M,T,W,T,F,S,S',
+      'weekdayShort': 'Mo,Tu,We,Th,Fr,Sa,Su',
       'weekdayLong': 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
       // Navbar
       'navCalendar': 'Calendar',
@@ -531,6 +541,8 @@ class AppStrings {
       'upcoming': 'À venir',
       'settings': 'Paramètres',
       'notifications': 'Notifications',
+      'timeFormat24h': 'Format 24 heures',
+      'weekStartsMonday': 'Semaine commence le lundi',
       'events': 'Événements',
       'groups': 'Groupes',
       'appearance': 'Apparence',
@@ -584,6 +596,9 @@ class AppStrings {
       'onlyVisibleToYou': 'Visible uniquement par vous',
       'couldNotLoadEvents': 'Impossible de charger les événements',
       'goToGroupsToStart': 'Allez dans Groupes pour commencer',
+      'welcomeToChalk': 'Bienvenue sur Chalk !',
+      'createOrJoinGroupToStart': 'Créez ou rejoignez un groupe pour voir les horaires.',
+      'goToGroups': 'Aller aux Groupes',
       'workingToday': 'Au travail aujourd\'hui',
       'greetingMorning': 'Bonjour, {name} ! 🌅',
       'greetingAfternoon': 'Bon après-midi, {name} ! ☀️',
@@ -650,7 +665,7 @@ class AppStrings {
       'endDate': 'Date de fin',
       'startTimeInPast': "L'heure de début est dans le passé",
       'scheduleNameHint': 'Nom (ex : Travail)',
-      'weekdayShort': 'L,M,M,J,V,S,D',
+      'weekdayShort': 'Lu,Ma,Me,Je,Ve,Sa,Di',
       'weekdayLong': 'Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi,Dimanche',
       // Navbar
       'navCalendar': 'Calendrier',
@@ -770,6 +785,8 @@ class AppStrings {
       'upcoming': 'Próximos',
       'settings': 'Ajustes',
       'notifications': 'Notificaciones',
+      'timeFormat24h': 'Formato 24 horas',
+      'weekStartsMonday': 'Semana empieza el lunes',
       'events': 'Eventos',
       'groups': 'Grupos',
       'appearance': 'Apariencia',
@@ -823,6 +840,9 @@ class AppStrings {
       'onlyVisibleToYou': 'Solo visible para ti',
       'couldNotLoadEvents': 'No se pudieron cargar los eventos',
       'goToGroupsToStart': 'Ve a Grupos para comenzar',
+      'welcomeToChalk': '¡Bienvenido a Chalk!',
+      'createOrJoinGroupToStart': 'Crea o únete a un grupo para ver los horarios.',
+      'goToGroups': 'Ir a Grupos',
       'workingToday': 'Trabajando hoy',
       'greetingMorning': '¡Buenos días, {name}! 🌅',
       'greetingAfternoon': '¡Buenas tardes, {name}! ☀️',
@@ -889,7 +909,7 @@ class AppStrings {
       'endDate': 'Fecha de fin',
       'startTimeInPast': 'La hora de inicio es en el pasado',
       'scheduleNameHint': 'Nombre del horario (ej: Trabajo)',
-      'weekdayShort': 'L,M,X,J,V,S,D',
+      'weekdayShort': 'Lu,Ma,Mi,Ju,Vi,Sa,Do',
       'weekdayLong': 'Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
       // Navbar
       'navCalendar': 'Calendario',
