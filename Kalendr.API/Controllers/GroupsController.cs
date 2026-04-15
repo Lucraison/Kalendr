@@ -68,9 +68,11 @@ public class GroupsController(AppDbContext db) : ControllerBase
         db.GroupMembers.Add(new GroupMember { Group = group, UserId = CurrentUserId, Color = color });
         await db.SaveChangesAsync();
 
-        // Reload with new member
-        await db.Entry(group).Collection(g => g.Members).LoadAsync();
-        return Ok(ToDto(group));
+        // Reload with new member including User navigation property
+        var reloaded = await db.Groups
+            .Include(g => g.Members).ThenInclude(m => m.User)
+            .FirstAsync(g => g.Id == group.Id);
+        return Ok(ToDto(reloaded));
     }
 
     [HttpPatch("{id}/rename")]

@@ -113,6 +113,7 @@ class AppStrings {
   String get goToGroups => _t('goToGroups');
   String get workingToday => _t('workingToday');
   String workingOn(String day) => _t('workingOn').replaceAll('{day}', day);
+  String get you => _t('you');
   String greetingMorning(String name) => _t('greetingMorning').replaceAll('{name}', name);
   String greetingAfternoon(String name) => _t('greetingAfternoon').replaceAll('{name}', name);
   String greetingEvening(String name) => _t('greetingEvening').replaceAll('{name}', name);
@@ -341,7 +342,7 @@ class AppStrings {
       'passwordResetLoginAgain': 'Password reset! Please log in.',
       'sentCodeTo': 'We sent a code to {email}. Enter it below.',
       // Onboarding
-      'welcomeToKalendr': 'Welcome to Kalendr',
+      'welcomeToKalendr': 'Welcome to Chalk',
       'onboardingDesc1': 'A shared calendar for the people that matter — family, friends, teammates.',
       'groupsKeepYouInSync': 'Groups keep you in sync',
       'onboardingDesc2': "Create or join a group, share events, and always know what's coming up.",
@@ -358,6 +359,7 @@ class AppStrings {
       'goToGroups': 'Go to Groups',
       'workingToday': 'Working today',
       'workingOn': 'Working {day}',
+      'you': 'You',
       'greetingMorning': 'Good morning, {name}! 🌅',
       'greetingAfternoon': 'Good afternoon, {name}! ☀️',
       'greetingEvening': 'Good evening, {name}! 🌙',
@@ -586,7 +588,7 @@ class AppStrings {
       'passwordResetLoginAgain': 'Mot de passe réinitialisé ! Veuillez vous connecter.',
       'sentCodeTo': 'Nous avons envoyé un code à {email}. Entrez-le ci-dessous.',
       // Onboarding
-      'welcomeToKalendr': 'Bienvenue sur Kalendr',
+      'welcomeToKalendr': 'Bienvenue sur Chalk',
       'onboardingDesc1': 'Un calendrier partagé pour ceux qui comptent — famille, amis, collègues.',
       'groupsKeepYouInSync': 'Les groupes vous synchronisent',
       'onboardingDesc2': 'Créez ou rejoignez un groupe, partagez des événements et soyez toujours informé.',
@@ -603,6 +605,7 @@ class AppStrings {
       'goToGroups': 'Aller aux Groupes',
       'workingToday': 'Au travail aujourd\'hui',
       'workingOn': 'Au travail {day}',
+      'you': 'Vous',
       'greetingMorning': 'Bonjour, {name} ! 🌅',
       'greetingAfternoon': 'Bon après-midi, {name} ! ☀️',
       'greetingEvening': 'Bonsoir, {name} ! 🌙',
@@ -831,7 +834,7 @@ class AppStrings {
       'passwordResetLoginAgain': '¡Contraseña restablecida! Por favor inicia sesión.',
       'sentCodeTo': 'Enviamos un código a {email}. Ingrésalo a continuación.',
       // Onboarding
-      'welcomeToKalendr': 'Bienvenido a Kalendr',
+      'welcomeToKalendr': 'Bienvenido a Chalk',
       'onboardingDesc1': 'Un calendario compartido para los que importan — familia, amigos, compañeros.',
       'groupsKeepYouInSync': 'Los grupos te mantienen sincronizado',
       'onboardingDesc2': 'Crea o únete a un grupo, comparte eventos y siempre sabe qué viene.',
@@ -848,6 +851,7 @@ class AppStrings {
       'goToGroups': 'Ir a Grupos',
       'workingToday': 'Trabajando hoy',
       'workingOn': 'Trabajando el {day}',
+      'you': 'Tú',
       'greetingMorning': '¡Buenos días, {name}! 🌅',
       'greetingAfternoon': '¡Buenas tardes, {name}! ☀️',
       'greetingEvening': '¡Buenas noches, {name}! 🌙',

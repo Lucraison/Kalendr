@@ -214,9 +214,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
   static const _kWorkBlue = Color(0xFF3B82F6);
 
   Color _eventColor(_EventWithGroup ew) {
+    // Explicit color (set on regular events) takes priority
     if (ew.event.color != null) return hexToColor(ew.event.color!);
-    if (ew.event.isAllDay) return _kWorkBlue;   // work schedule events have no color
-    if (ew.group != null) return _groupColor(ew.group!);
+    // Work shifts always use the work blue
+    if (ew.event.isWorkHours) return _kWorkBlue;
+    // For group events, use the creator's assigned member color so you can
+    // tell whose events are whose at a glance
+    if (ew.group != null) {
+      final member = ew.group!.members.cast<GroupMember?>().firstWhere(
+        (m) => m?.userId == ew.event.createdByUserId,
+        orElse: () => null,
+      );
+      if (member != null) return hexToColor(member.color);
+      return _groupColor(ew.group!);
+    }
     return kPrimary;
   }
 
@@ -397,9 +408,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final auth = context.read<AppProvider>().auth;
     final myUserId = auth.userId;
     final allSelected = _eventsForDay(_selectedDay);
-    // Others' work schedules go to the avatar strip, not the event list
-    final othersWork = allSelected.where((ew) => ew.event.isWorkHours && ew.event.createdByUserId != myUserId).toList();
-    final selectedEvents = allSelected.where((ew) => !ew.event.isWorkHours || ew.event.createdByUserId == myUserId).toList();
+    // All work schedules go to the avatar strip; non-work events go to the list
+    final othersWork = allSelected.where((ew) => ew.event.isWorkHours).toList();
+    final selectedEvents = allSelected.where((ew) => !ew.event.isWorkHours).toList();
     final today = DateTime.now();
     final todayEvents = _eventsForDay(today);
 
@@ -854,6 +865,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildWhoIsWorking(List<_EventWithGroup> workEvents) {
+    final myUserId = context.read<AppProvider>().auth.userId;
     // Group shifts by user (one person may have multiple shifts)
     final byUser = <String, ({String username, List<_EventWithGroup> shifts})>{};
     for (final ew in workEvents) {
@@ -870,44 +882,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: _kWorkBlue.withOpacity(0.15)),
         ),
-        child: Row(children: [
-          Icon(Icons.work_outline_rounded, size: 15, color: _kWorkBlue),
-          const SizedBox(width: 8),
-          Text(
-            isSameDay(_selectedDay, DateTime.now())
-                ? context.s.workingToday
-                : context.s.workingOn(DateFormat('EEEE').format(_selectedDay)),
-            style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: _kWorkBlue),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Wrap(spacing: 6, runSpacing: 4, children: byUser.entries.map((entry) {
-              final name = entry.value.username;
-              final shifts = entry.value.shifts;
-              final provider = context.read<AppProvider>();
-              final sortedShifts = [...shifts]..sort((a, b) => a.event.startTime.compareTo(b.event.startTime));
-              final hours = sortedShifts
-                  .map((s) => '${provider.formatDateTime(s.event.startTime)}–${provider.formatDateTime(s.event.endTime)}')
-                  .join(',  ');
-              final firstShift = shifts.reduce((a, b) =>
-                  a.event.startTime.isBefore(b.event.startTime) ? a : b);
-              return GestureDetector(
-                onTap: () => _showWorkShiftSheet(name, sortedShifts, firstShift.group),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 30, height: 30,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: _kWorkBlue),
-                    child: Center(child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
-                    )),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.work_outline_rounded, size: 14, color: _kWorkBlue),
+            const SizedBox(width: 6),
+            Text(
+              isSameDay(_selectedDay, DateTime.now())
+                  ? context.s.workingToday
+                  : context.s.workingOn(DateFormat('EEEE').format(_selectedDay)),
+              style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700,
+                  color: _kWorkBlue, letterSpacing: 0.2),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          Wrap(spacing: 12, runSpacing: 8, children: byUser.entries.map((entry) {
+            final userId = entry.key;
+            final name = entry.value.username;
+            final shifts = entry.value.shifts;
+            final isMe = userId == myUserId;
+            final provider = context.read<AppProvider>();
+            final sortedShifts = [...shifts]..sort((a, b) => a.event.startTime.compareTo(b.event.startTime));
+            final firstShift = shifts.reduce((a, b) =>
+                a.event.startTime.isBefore(b.event.startTime) ? a : b);
+            return GestureDetector(
+              onTap: () => _showWorkShiftSheet(isMe ? context.s.you : name, sortedShifts, firstShift.group),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isMe ? kPrimary : _kWorkBlue,
+                    border: isMe ? Border.all(color: kPrimary.withOpacity(0.4), width: 2) : null,
                   ),
-                  const SizedBox(width: 4),
-                  Text(hours, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600, color: _kWorkBlue)),
-                ]),
-              );
-            }).toList()),
-          ),
+                  child: Center(child: Text(
+                    isMe ? '✓' : (name.isNotEmpty ? name[0].toUpperCase() : '?'),
+                    style: GoogleFonts.nunito(fontSize: isMe ? 14 : 12, fontWeight: FontWeight.w800, color: Colors.white),
+                  )),
+                ),
+                const SizedBox(width: 6),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isMe)
+                      Text(context.s.you, style: GoogleFonts.nunito(
+                        fontSize: 11, fontWeight: FontWeight.w700, color: kPrimary)),
+                    ...sortedShifts.map((s) => Text(
+                      '${provider.formatDateTime(s.event.startTime)}–${provider.formatDateTime(s.event.endTime)}',
+                      style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600,
+                          color: isMe ? kPrimary : _kWorkBlue),
+                    )),
+                  ],
+                ),
+              ]),
+            );
+          }).toList()),
         ]),
       ),
     );
@@ -993,21 +1021,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _eventTile(_EventWithGroup ew) {
     final color = _eventColor(ew);
     final timeStr = ew.event.isAllDay ? context.s.allDay : context.read<AppProvider>().formatDateTime(ew.event.startTime);
+    final myUserId = context.read<AppProvider>().auth.userId;
+    final isOwn = ew.event.createdByUserId == myUserId;
 
-    return GestureDetector(
-      onTap: () => Navigator.push(context, slideRoute(EventDetailScreen(
-        event: ew.event,
-        group: ew.group,
-        color: color,
-        availableGroups: _groups,
-        similarEvents: _eventsByDay.values.expand((v) => v)
-            .where((x) => x.event.id != ew.event.id && x.event.title == ew.event.title && x.event.createdByUserId == ew.event.createdByUserId)
-            .map((x) => x.event).toList(),
-        onDeleted: () => setState(() {
-          _eventsByDay.forEach((k, v) => v.removeWhere((x) => x.event.id == ew.event.id));
-        }),
-        onUpdated: () => setState(() {}),
-      ))),
+    void openDetail() => Navigator.push(context, slideRoute(EventDetailScreen(
+      event: ew.event,
+      group: ew.group,
+      color: color,
+      availableGroups: _groups,
+      similarEvents: _eventsByDay.values.expand((v) => v)
+          .where((x) => x.event.id != ew.event.id && x.event.title == ew.event.title && x.event.createdByUserId == ew.event.createdByUserId)
+          .map((x) => x.event).toList(),
+      onDeleted: () => setState(() {
+        _eventsByDay.forEach((k, v) => v.removeWhere((x) => x.event.id == ew.event.id));
+      }),
+      onUpdated: () => setState(() {}),
+    )));
+
+    final tile = GestureDetector(
+      onTap: openDetail,
       child: Container(
         margin: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
         decoration: BoxDecoration(
@@ -1053,6 +1085,48 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ]),
       ),
+    );
+
+    if (!isOwn) return tile;
+
+    return Dismissible(
+      key: ValueKey('tile-${ew.event.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(context.s.deleteEvent, style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+            content: Text('"${ew.event.title}"', style: GoogleFonts.nunito()),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false),
+                  child: Text(context.s.cancel, style: GoogleFonts.nunito())),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(context.s.delete, style: GoogleFonts.nunito(color: Colors.red, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true) return false;
+        try {
+          await context.read<AppProvider>().api.deleteEvent(ew.group?.id, ew.event.id);
+          if (mounted) setState(() {
+            _eventsByDay.forEach((k, v) => v.removeWhere((x) => x.event.id == ew.event.id));
+          });
+        } catch (_) {}
+        return false; // we handle removal manually
+      },
+      background: const SizedBox.shrink(),
+      secondaryBackground: Container(
+        margin: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
+        decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(16)),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
+      ),
+      child: tile,
     );
   }
 }

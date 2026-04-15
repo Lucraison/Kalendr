@@ -378,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // ── Footer ─────────────────────────────────────────────────
               const SizedBox(height: 32),
-              Center(child: Text('Kalendr v1.0.0',
+              Center(child: Text('Chalk v1.0.0',
                   style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context)))),
               const SizedBox(height: 24),
             ]),

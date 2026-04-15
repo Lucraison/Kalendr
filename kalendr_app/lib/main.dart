@@ -41,7 +41,7 @@ class KalendrApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     return MaterialApp(
-      title: 'Kalendr',
+      title: 'Chalk',
       debugShowCheckedModeBanner: false,
       theme: KalendrTheme.light(),
       darkTheme: KalendrTheme.dark(),

@@ -219,23 +219,112 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       ? _buildError()
                       : _groups.isEmpty
                       ? ListView(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                           children: [
-                            const SizedBox(height: 80),
-                            Center(child: Column(children: [
-                              Container(
-                                width: 80, height: 80,
-                                decoration: BoxDecoration(
-                                  color: kPrimary.withOpacity(0.08),
-                                  shape: BoxShape.circle,
+                            const SizedBox(height: 60),
+                            Center(child: Container(
+                              width: 80, height: 80,
+                              decoration: BoxDecoration(color: kPrimary.withOpacity(0.08), shape: BoxShape.circle),
+                              child: const Icon(Icons.people_outline_rounded, size: 40, color: kPrimary),
+                            )),
+                            const SizedBox(height: 20),
+                            Text(context.s.noGroupsYet,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
+                            const SizedBox(height: 8),
+                            Text('Create a group or join one with an invite code to see everyone\'s schedule.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context))),
+                            const SizedBox(height: 32),
+                            // Create group inline
+                            Text(context.s.createAGroup,
+                                style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
+                                  child: TextField(
+                                    controller: _groupName,
+                                    style: GoogleFonts.nunito(color: KalendrTheme.text(context), fontSize: 15),
+                                    decoration: InputDecoration(
+                                      hintText: context.s.groupNameHint,
+                                      hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 15),
+                                      prefixIcon: Icon(Icons.group_add_rounded, size: 18, color: KalendrTheme.muted(context)),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    ),
+                                  ),
                                 ),
-                                child: const Icon(Icons.people_outline_rounded, size: 40, color: kPrimary),
                               ),
-                              const SizedBox(height: 20),
-                              Text(context.s.noGroupsYet, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
-                              const SizedBox(height: 6),
-                              Text(context.s.tapPlusToCreate, style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context)), textAlign: TextAlign.center),
-                            ])),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _creating ? null : _create,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: kPrimary, foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  ),
+                                  child: _creating
+                                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                      : Text(context.s.create, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14)),
+                                ),
+                              ),
+                            ]),
+                            const SizedBox(height: 20),
+                            Row(children: [
+                              Expanded(child: Divider(color: KalendrTheme.divider(context))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('or', style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+                              ),
+                              Expanded(child: Divider(color: KalendrTheme.divider(context))),
+                            ]),
+                            const SizedBox(height: 20),
+                            // Join group inline
+                            Text(context.s.joinWithInviteCode,
+                                style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: KalendrTheme.subtext(context))),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(color: KalendrTheme.field(context), borderRadius: BorderRadius.circular(14)),
+                                  child: TextField(
+                                    controller: _inviteCode,
+                                    textCapitalization: TextCapitalization.characters,
+                                    style: GoogleFonts.nunito(color: KalendrTheme.text(context), fontSize: 15, letterSpacing: 1.5),
+                                    decoration: InputDecoration(
+                                      hintText: 'XXXXXXXX...',
+                                      hintStyle: GoogleFonts.nunito(color: KalendrTheme.muted(context), fontSize: 15),
+                                      prefixIcon: Icon(Icons.link_rounded, size: 18, color: KalendrTheme.muted(context)),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _joining ? null : _join,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4ECDC4), foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  ),
+                                  child: _joining
+                                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                      : Text(context.s.join, style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14)),
+                                ),
+                              ),
+                            ]),
+                            if (_error.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Text(_error, style: GoogleFonts.nunito(color: kPrimary, fontSize: 13), textAlign: TextAlign.center),
+                            ],
                           ],
                         )
                       : ListView(
