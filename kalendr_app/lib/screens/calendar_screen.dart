@@ -406,9 +406,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final s = context.s;
     final auth = context.read<AppProvider>().auth;
+    final myUserId = auth.userId;
     final allSelected = _eventsForDay(_selectedDay);
-    // All work schedules go to the avatar strip; non-work events go to the list
-    final othersWork = allSelected.where((ew) => ew.event.isWorkHours).toList();
+    // Others' work schedules go to the avatar strip (you already know your own).
+    final othersWork = allSelected
+        .where((ew) => ew.event.isWorkHours && ew.event.createdByUserId != myUserId)
+        .toList();
     final selectedEvents = allSelected.where((ew) => !ew.event.isWorkHours).toList();
     final today = DateTime.now();
     final todayEvents = _eventsForDay(today);
