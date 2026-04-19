@@ -147,6 +147,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
 
   Future<void> _pickFrom() async {
     final s = context.s;
+    final startOnMon = context.read<AppProvider>().startOnMonday;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
@@ -157,6 +158,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
         first: DateTime.now().subtract(const Duration(days: 365)),
         last: DateTime.now().add(const Duration(days: 365 * 5)),
         accentColor: _kWorkColor,
+        startOnMonday: startOnMon,
       ),
     );
     if (date != null && mounted) {
@@ -173,6 +175,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
 
   Future<void> _pickCustomUntil() async {
     final s = context.s;
+    final startOnMon = context.read<AppProvider>().startOnMonday;
     final date = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
@@ -186,6 +189,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
         highlightLabel: s.start,
         rangeStart: _from,
         accentColor: _kWorkColor,
+        startOnMonday: startOnMon,
       ),
     );
     if (date != null && mounted) setState(() { _until = date; _presetLabel = null; });
@@ -228,6 +232,8 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
   Widget build(BuildContext context) {
     final s = context.s;
     final dayLabels = s.weekdayShort;
+    final startOnMon = context.watch<AppProvider>().startOnMonday;
+    final weekdayOrder = startOnMon ? const [1, 2, 3, 4, 5, 6, 7] : const [7, 1, 2, 3, 4, 5, 6];
     return Container(
       decoration: BoxDecoration(
         color: KalendrTheme.surface(context),
@@ -291,7 +297,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [1, 2, 3, 4, 5, 6, 7].map((wd) {
+            children: weekdayOrder.map((wd) {
               final active = _selectedDays.contains(wd);
               return GestureDetector(
                 onTap: () => _toggleDay(wd),
@@ -320,7 +326,7 @@ class _AddWorkScheduleSheetState extends State<AddWorkScheduleSheet> {
             if (_sameHours)
               _globalShiftsCard()
             else ...[
-              ...[1, 2, 3, 4, 5, 6, 7]
+              ...weekdayOrder
                   .where((wd) => _selectedDays.contains(wd))
                   .map((wd) => _dayHoursRow(wd)),
             ],

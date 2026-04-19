@@ -108,7 +108,6 @@ class _MainNavState extends State<_MainNav> {
 
   @override
   Widget build(BuildContext context) {
-    final unread = context.watch<AppProvider>().unreadCount;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mutedColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
 
@@ -143,18 +142,8 @@ class _MainNavState extends State<_MainNav> {
             label: context.s.groups,
           ),
           NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread', style: GoogleFonts.nunito(fontSize: 10, color: Colors.white)),
-              backgroundColor: kPrimary,
-              child: Icon(Icons.notifications_outlined, color: mutedColor),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread', style: GoogleFonts.nunito(fontSize: 10, color: Colors.white)),
-              backgroundColor: kPrimary,
-              child: const Icon(Icons.notifications_rounded, color: kPrimary),
-            ),
+            icon: Icon(Icons.upcoming_outlined, color: mutedColor),
+            selectedIcon: const Icon(Icons.upcoming_rounded, color: kPrimary),
             label: context.s.navActivity,
           ),
           NavigationDestination(

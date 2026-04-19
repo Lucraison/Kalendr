@@ -180,6 +180,10 @@ class AppStrings {
   String get navCalendar => _t('navCalendar');
   String get navActivity => _t('navActivity');
   String get navProfile => _t('navProfile');
+  String get soonTitle => _t('soonTitle');
+  String get nothingComingUp => _t('nothingComingUp');
+  String get nothingComingUpSub => _t('nothingComingUpSub');
+  String get tomorrow => _t('tomorrow');
 
   // ── Calendar picker ───────────────────────────────────────────────────────
   String get selectTime => _t('selectTime');
@@ -429,8 +433,12 @@ class AppStrings {
       'weekdayLong': 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
       // Navbar
       'navCalendar': 'Calendar',
-      'navActivity': 'Activity',
+      'navActivity': 'Soon',
       'navProfile': 'Profile',
+      'soonTitle': 'Coming up',
+      'nothingComingUp': 'All clear!',
+      'nothingComingUpSub': 'Nothing scheduled in the next 14 days.',
+      'tomorrow': 'Tomorrow',
       // Calendar picker
       'selectTime': 'Select time',
       'confirmDate': 'Confirm {date}',
@@ -675,8 +683,12 @@ class AppStrings {
       'weekdayLong': 'Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi,Dimanche',
       // Navbar
       'navCalendar': 'Calendrier',
-      'navActivity': 'Activité',
+      'navActivity': 'Bientôt',
       'navProfile': 'Profil',
+      'soonTitle': 'À venir',
+      'nothingComingUp': 'Tout est libre !',
+      'nothingComingUpSub': 'Rien de prévu dans les 14 prochains jours.',
+      'tomorrow': 'Demain',
       // Calendar picker
       'selectTime': "Sélectionner l'heure",
       'confirmDate': 'Confirmer {date}',
@@ -921,8 +933,12 @@ class AppStrings {
       'weekdayLong': 'Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
       // Navbar
       'navCalendar': 'Calendario',
-      'navActivity': 'Actividad',
+      'navActivity': 'Próximo',
       'navProfile': 'Perfil',
+      'soonTitle': 'Próximamente',
+      'nothingComingUp': '¡Todo despejado!',
+      'nothingComingUpSub': 'Nada programado en los próximos 14 días.',
+      'tomorrow': 'Mañana',
       // Calendar picker
       'selectTime': 'Seleccionar hora',
       'confirmDate': 'Confirmar {date}',

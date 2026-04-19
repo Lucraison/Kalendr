@@ -20,6 +20,7 @@ class CalendarPickerSheet extends StatefulWidget {
   final String? highlightLabel;   // label shown in the legend chip
   final DateTime? rangeStart;     // shades the range between rangeStart and selected
   final Color accentColor;
+  final bool startOnMonday;
 
   const CalendarPickerSheet({
     super.key,
@@ -31,6 +32,7 @@ class CalendarPickerSheet extends StatefulWidget {
     this.highlightLabel,
     this.rangeStart,
     this.accentColor = kPrimary,
+    this.startOnMonday = true,
   });
 
   @override
@@ -239,6 +241,7 @@ class _CalendarPickerSheetState extends State<CalendarPickerSheet> {
             firstDay: widget.first,
             lastDay: widget.last,
             focusedDay: _focused,
+            startingDayOfWeek: widget.startOnMonday ? StartingDayOfWeek.monday : StartingDayOfWeek.sunday,
             sixWeekMonthsEnforced: true,
             pageAnimationDuration: const Duration(milliseconds: 180),
             pageAnimationCurve: Curves.easeOut,

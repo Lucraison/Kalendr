@@ -406,7 +406,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final s = context.s;
     final auth = context.read<AppProvider>().auth;
-    final myUserId = auth.userId;
     final allSelected = _eventsForDay(_selectedDay);
     // All work schedules go to the avatar strip; non-work events go to the list
     final othersWork = allSelected.where((ew) => ew.event.isWorkHours).toList();
@@ -866,11 +865,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildWhoIsWorking(List<_EventWithGroup> workEvents) {
     final myUserId = context.read<AppProvider>().auth.userId;
-    // Group shifts by user (one person may have multiple shifts)
+    // Group shifts by user (one person may have multiple shifts), preserving
+    // time-order within each person.
     final byUser = <String, ({String username, List<_EventWithGroup> shifts})>{};
     for (final ew in workEvents) {
       byUser.putIfAbsent(ew.event.createdByUserId, () => (username: ew.event.createdByUsername, shifts: []));
       byUser[ew.event.createdByUserId]!.shifts.add(ew);
+    }
+    for (final entry in byUser.values) {
+      entry.shifts.sort((a, b) => a.event.startTime.compareTo(b.event.startTime));
+    }
+
+    // Flatten to a list of pills: one per shift, with a flag indicating whether
+    // it's the first shift of its person (controls avatar vs. ↳ continuation).
+    final pills = <({_EventWithGroup ew, bool isMe, bool isFirst, String name})>[];
+    for (final entry in byUser.entries) {
+      final isMe = entry.key == myUserId;
+      for (int i = 0; i < entry.value.shifts.length; i++) {
+        pills.add((ew: entry.value.shifts[i], isMe: isMe, isFirst: i == 0, name: entry.value.username));
+      }
     }
 
     return Padding(
@@ -894,128 +907,81 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   color: _kWorkBlue, letterSpacing: 0.2),
             ),
           ]),
-          const SizedBox(height: 8),
-          Wrap(spacing: 12, runSpacing: 8, children: byUser.entries.map((entry) {
-            final userId = entry.key;
-            final name = entry.value.username;
-            final shifts = entry.value.shifts;
-            final isMe = userId == myUserId;
-            final provider = context.read<AppProvider>();
-            final sortedShifts = [...shifts]..sort((a, b) => a.event.startTime.compareTo(b.event.startTime));
-            final firstShift = shifts.reduce((a, b) =>
-                a.event.startTime.isBefore(b.event.startTime) ? a : b);
-            return GestureDetector(
-              onTap: () => _showWorkShiftSheet(isMe ? context.s.you : name, sortedShifts, firstShift.group),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  width: 28, height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isMe ? kPrimary : _kWorkBlue,
-                    border: isMe ? Border.all(color: kPrimary.withOpacity(0.4), width: 2) : null,
-                  ),
-                  child: Center(child: Text(
-                    isMe ? '✓' : (name.isNotEmpty ? name[0].toUpperCase() : '?'),
-                    style: GoogleFonts.nunito(fontSize: isMe ? 14 : 12, fontWeight: FontWeight.w800, color: Colors.white),
-                  )),
-                ),
-                const SizedBox(width: 6),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isMe)
-                      Text(context.s.you, style: GoogleFonts.nunito(
-                        fontSize: 11, fontWeight: FontWeight.w700, color: kPrimary)),
-                    ...sortedShifts.map((s) => Text(
-                      '${provider.formatDateTime(s.event.startTime)}–${provider.formatDateTime(s.event.endTime)}',
-                      style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w600,
-                          color: isMe ? kPrimary : _kWorkBlue),
-                    )),
-                  ],
-                ),
-              ]),
-            );
-          }).toList()),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: pills.map(_shiftPill).toList()),
         ]),
       ),
     );
   }
 
-  void _showWorkShiftSheet(String username, List<_EventWithGroup> sortedShifts, Group? group) {
+  Widget _shiftPill(({_EventWithGroup ew, bool isMe, bool isFirst, String name}) p) {
+    final accent = p.isMe ? kPrimary : _kWorkBlue;
     final provider = context.read<AppProvider>();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Container(
-          decoration: BoxDecoration(
-            color: KalendrTheme.surface(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            left: 24, right: 24, top: 16,
-            bottom: MediaQuery.of(context).padding.bottom + 28,
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Center(child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-            )),
-            const SizedBox(height: 20),
-            // Avatar + name row
-            Row(children: [
+    final timeStr = '${provider.formatDateTime(p.ew.event.startTime)}–${provider.formatDateTime(p.ew.event.endTime)}';
+
+    return GestureDetector(
+      onTap: () => _openEventDetail(p.ew),
+      child: Container(
+        padding: EdgeInsets.only(
+          left: p.isFirst ? 4 : 10,
+          right: 10,
+          top: 4, bottom: 4,
+        ),
+        decoration: BoxDecoration(
+          color: accent.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: accent.withOpacity(0.3)),
+        ),
+        child: SizedBox(
+          height: 24,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (p.isFirst) ...[
               Container(
-                width: 44, height: 44,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: _kWorkBlue),
+                width: 24, height: 24,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: accent),
                 child: Center(child: Text(
-                  username.isNotEmpty ? username[0].toUpperCase() : '?',
-                  style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                  p.isMe ? '✓' : (p.name.isNotEmpty ? p.name[0].toUpperCase() : '?'),
+                  style: GoogleFonts.nunito(
+                    fontSize: p.isMe ? 13 : 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 )),
               ),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(username, style: GoogleFonts.nunito(
-                  fontSize: 18, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
-                if (group != null)
-                  Row(children: [
-                    Icon(Icons.group_rounded, size: 13, color: KalendrTheme.muted(context)),
-                    const SizedBox(width: 4),
-                    Text(group.name, style: GoogleFonts.nunito(
-                      fontSize: 13, color: KalendrTheme.subtext(context))),
-                  ]),
-              ]),
-            ]),
-            const SizedBox(height: 20),
-            // Shift rows
-            ...sortedShifts.map((ew) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _kWorkBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.work_outline_rounded, size: 16, color: _kWorkBlue),
-                ),
-                const SizedBox(width: 12),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    DateFormat('EEE, MMM d').format(ew.event.startTime),
-                    style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.subtext(context)),
-                  ),
-                  Text(
-                    '${provider.formatDateTime(ew.event.startTime)} – ${provider.formatDateTime(ew.event.endTime)}',
-                    style: GoogleFonts.nunito(
-                      fontSize: 16, fontWeight: FontWeight.w700, color: KalendrTheme.text(context)),
-                  ),
-                ]),
-              ]),
-            )),
+              const SizedBox(width: 8),
+              if (p.isMe) ...[
+                Text(context.s.you, style: GoogleFonts.nunito(
+                  fontSize: 11, fontWeight: FontWeight.w800, color: accent)),
+                const SizedBox(width: 6),
+              ],
+            ] else ...[
+              Text('↳', style: GoogleFonts.nunito(
+                fontSize: 13, fontWeight: FontWeight.w600, color: accent.withOpacity(0.7))),
+              const SizedBox(width: 6),
+            ],
+            Text(timeStr, style: GoogleFonts.nunito(
+              fontSize: 12, fontWeight: FontWeight.w700, color: accent)),
           ]),
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  void _openEventDetail(_EventWithGroup ew) {
+    final color = _eventColor(ew);
+    Navigator.push(context, slideRoute(EventDetailScreen(
+      event: ew.event,
+      group: ew.group,
+      color: color,
+      availableGroups: _groups,
+      similarEvents: _eventsByDay.values.expand((v) => v)
+          .where((x) => x.event.id != ew.event.id && x.event.title == ew.event.title && x.event.createdByUserId == ew.event.createdByUserId)
+          .map((x) => x.event).toList(),
+      onDeleted: () => setState(() {
+        _eventsByDay.forEach((k, v) => v.removeWhere((x) => x.event.id == ew.event.id));
+      }),
+      onUpdated: () => setState(() {}),
+    )));
   }
 
   Widget _eventTile(_EventWithGroup ew) {

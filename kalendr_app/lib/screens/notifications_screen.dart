@@ -18,8 +18,12 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<AppNotification> _notifications = [];
+  // Events grouped by day key (yyyy-MM-dd)
+  final Map<String, List<_EventEntry>> _byDay = {};
+  List<String> _sortedDays = [];
+  List<Group> _groups = [];
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -28,65 +32,88 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = false; });
     try {
-      final notifs = await context.read<AppProvider>().api.getNotifications();
-      if (mounted) setState(() => _notifications = notifs);
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+      final api = context.read<AppProvider>().api;
+      final now = DateTime.now();
+      final from = DateTime(now.year, now.month, now.day); // start of today
+      final to = from.add(const Duration(days: 14));
 
-    // Mark all as read
-    try {
-      await context.read<AppProvider>().api.markAllRead();
-      context.read<AppProvider>().clearUnreadCount();
-      if (mounted) setState(() { for (final n in _notifications) n.isRead = true; });
-    } catch (_) {}
-  }
+      _groups = await api.getGroups();
 
-  Future<void> _openEvent(AppNotification notif) async {
-    if (notif.eventId == null || notif.groupId == null) return;
-    final api = context.read<AppProvider>().api;
-    try {
       final results = await Future.wait([
-        api.getEvent(notif.eventId!),
-        api.getGroups(),
+        ..._groups.map((g) => api.getEvents(g.id, from: from, to: to)),
+        api.getPersonalEvents(from: from, to: to),
       ]);
-      final event = results[0] as CalendarEvent;
-      final groups = results[1] as List<Group>;
-      final group = groups.firstWhere((g) => g.id == notif.groupId,
-          orElse: () => Group(id: notif.groupId!, name: '', inviteCode: '', members: []));
+
       if (!mounted) return;
-      Navigator.push(context, slideRoute(EventDetailScreen(
-        event: event,
-        group: group,
-        color: _groupColor(notif.groupId!),
-      )));
+
+      final seen = <String>{};
+      final newByDay = <String, List<_EventEntry>>{};
+
+      for (int i = 0; i < _groups.length; i++) {
+        for (final e in results[i]) {
+          if (seen.add(e.id)) {
+            final key = _dayKey(e.startTime);
+            newByDay.putIfAbsent(key, () => []).add(_EventEntry(e, _groups[i]));
+          }
+        }
+      }
+      for (final e in results[_groups.length]) {
+        if (seen.add(e.id)) {
+          final key = _dayKey(e.startTime);
+          newByDay.putIfAbsent(key, () => []).add(_EventEntry(e, null));
+        }
+      }
+
+      // Sort events within each day by start time
+      for (final list in newByDay.values) {
+        list.sort((a, b) => a.event.startTime.compareTo(b.event.startTime));
+      }
+
+      setState(() {
+        _byDay
+          ..clear()
+          ..addAll(newByDay);
+        _sortedDays = newByDay.keys.toList()..sort();
+      });
     } catch (_) {
-      if (mounted) showSnack(context, context.s.couldNotLoadEvent);
+      if (mounted) setState(() => _error = true);
     }
+    if (mounted) setState(() => _loading = false);
   }
 
-  Color _groupColor(String groupId) => groupColorFor(groupId);
+  String _dayKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
-  Future<void> _delete(AppNotification notif) async {
-    try {
-      await context.read<AppProvider>().api.deleteNotification(notif.id);
-      setState(() => _notifications.removeWhere((n) => n.id == notif.id));
-    } catch (_) {}
+  String _dayHeader(String key, AppStrings s) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime.parse(key);
+    if (date == today) return s.today;
+    if (date == today.add(const Duration(days: 1))) return s.tomorrow;
+    // Within this week: show day name
+    if (date.difference(today).inDays < 7) return DateFormat('EEEE').format(date);
+    return DateFormat('EEE, MMM d').format(date);
   }
 
-  String _relativeTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('MMM d').format(dt);
+  Color _eventColor(_EventEntry entry) {
+    final e = entry.event;
+    if (e.color != null) return hexToColor(e.color!);
+    if (e.isWorkHours) return const Color(0xFF3B82F6);
+    if (entry.group != null) {
+      final member = entry.group!.members.cast<GroupMember?>().firstWhere(
+        (m) => m?.userId == e.createdByUserId, orElse: () => null);
+      if (member != null) return hexToColor(member.color);
+      return groupColorFor(entry.group!.id);
+    }
+    return kPrimary;
   }
 
   @override
   Widget build(BuildContext context) {
     final s = context.s;
+    final provider = context.read<AppProvider>();
+
     return Scaffold(
       backgroundColor: KalendrTheme.bg(context),
       body: Column(children: [
@@ -97,18 +124,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             left: 20, right: 20, bottom: 16,
           ),
           child: Row(children: [
-            Text(s.notifications, style: GoogleFonts.nunito(fontSize: 24, fontWeight: FontWeight.w800, color: KalendrTheme.text(context))),
-            const Spacer(),
-            if (_notifications.isNotEmpty)
-              TextButton(
-                onPressed: () async {
-                  await context.read<AppProvider>().api.markAllRead();
-                  setState(() {
-                    _notifications.clear();
-                  });
-                },
-                child: Text(s.clearAll, style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context))),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.soonTitle,
+                  style: GoogleFonts.nunito(fontSize: 26, fontWeight: FontWeight.w800,
+                      color: KalendrTheme.text(context))),
+              Text(
+                DateFormat('MMM d').format(DateTime.now()) +
+                    ' – ' +
+                    DateFormat('MMM d').format(DateTime.now().add(const Duration(days: 14))),
+                style: GoogleFonts.nunito(fontSize: 13, color: KalendrTheme.muted(context)),
               ),
+            ]),
           ]),
         ),
 
@@ -118,51 +144,103 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               : RefreshIndicator(
                   color: kPrimary,
                   onRefresh: _load,
-                  child: _notifications.isEmpty
+                  child: _error
                       ? ListView(children: [
                           SizedBox(height: MediaQuery.of(context).size.height * 0.25),
                           Center(child: Column(children: [
-                            const Text('🔔', style: TextStyle(fontSize: 48)),
+                            Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey.shade300),
                             const SizedBox(height: 16),
-                            Text(s.youreAllCaughtUp,
-                                style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w700, color: KalendrTheme.text(context))),
-                            const SizedBox(height: 4),
-                            Text(s.newEventsWillAppearHere,
-                                style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context))),
+                            Text(context.s.couldNotLoadEvents,
+                                style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700,
+                                    color: KalendrTheme.text(context))),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: _load,
+                              icon: const Icon(Icons.refresh_rounded, size: 16),
+                              label: Text(context.s.retry, style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                              style: TextButton.styleFrom(foregroundColor: kPrimary),
+                            ),
                           ])),
                         ])
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: _notifications.length,
-                          itemBuilder: (_, i) => _notifTile(_notifications[i]),
-                        ),
+                      : _sortedDays.isEmpty
+                          ? ListView(children: [
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                              Center(child: Column(children: [
+                                const Text('🌿', style: TextStyle(fontSize: 48)),
+                                const SizedBox(height: 16),
+                                Text(s.nothingComingUp,
+                                    style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800,
+                                        color: KalendrTheme.text(context))),
+                                const SizedBox(height: 6),
+                                Text(s.nothingComingUpSub,
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.nunito(fontSize: 14, color: KalendrTheme.muted(context))),
+                              ])),
+                            ])
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                              itemCount: _sortedDays.length,
+                              itemBuilder: (_, i) {
+                                final day = _sortedDays[i];
+                                final entries = _byDay[day]!;
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8, top: 4),
+                                      child: Text(
+                                        _dayHeader(day, s),
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                          color: day == _dayKey(DateTime.now())
+                                              ? kPrimary
+                                              : KalendrTheme.subtext(context),
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    ...entries.map((entry) => _eventTile(entry, provider)),
+                                    const SizedBox(height: 12),
+                                  ],
+                                );
+                              },
+                            ),
                 ),
         ),
       ]),
     );
   }
 
-  Widget _notifTile(AppNotification notif) {
-    return Dismissible(
-      key: Key(notif.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
+  Widget _eventTile(_EventEntry entry, AppProvider provider) {
+    final e = entry.event;
+    final color = _eventColor(entry);
+    final timeStr = e.isAllDay
+        ? context.s.allDay
+        : provider.formatDateTime(e.startTime);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(context, slideRoute(EventDetailScreen(
+        event: e,
+        group: entry.group,
+        color: color,
+        availableGroups: _groups,
+        onDeleted: () => setState(() {
+          for (final list in _byDay.values) {
+            list.removeWhere((x) => x.event.id == e.id);
+          }
+          _sortedDays = _byDay.entries
+              .where((kv) => kv.value.isNotEmpty)
+              .map((kv) => kv.key)
+              .toList()..sort();
+        }),
+        onUpdated: () => _load(),
+      ))),
+      child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(color: const Color(0xFFFFEEEE), borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.delete_outline_rounded, color: kPrimary, size: 22),
-      ),
-      onDismissed: (_) => _delete(notif),
-      child: GestureDetector(
-        onTap: notif.eventId != null ? () => _openEvent(notif) : null,
-        child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: KalendrTheme.surface(context),
           borderRadius: BorderRadius.circular(16),
-          border: notif.isRead ? null : Border.all(color: kPrimary.withOpacity(0.25)),
           boxShadow: [BoxShadow(
             color: Theme.of(context).brightness == Brightness.dark
                 ? Colors.black.withOpacity(0.25)
@@ -171,59 +249,98 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             offset: const Offset(0, 2),
           )],
         ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Row(children: [
           Container(
-            width: 38, height: 38,
+            width: 5, height: 68,
             decoration: BoxDecoration(
-              color: kPrimary.withOpacity(notif.isRead ? 0.08 : 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              notif.message.contains('commented') ? Icons.chat_bubble_rounded : Icons.event_rounded,
-              color: kPrimary.withOpacity(notif.isRead ? 0.5 : 1),
-              size: 18,
+              color: color,
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(notif.message,
-                style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.w700,
-                  color: notif.isRead ? KalendrTheme.subtext(context) : KalendrTheme.text(context),
-                )),
-            const SizedBox(height: 3),
-            Text(_relativeTime(notif.createdAt),
-                style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
-          ])),
-          if (!notif.isRead)
-            Container(width: 8, height: 8, margin: const EdgeInsets.only(top: 4, left: 8),
-                decoration: const BoxDecoration(color: kPrimary, shape: BoxShape.circle)),
-          if (notif.eventId != null)
-            Icon(Icons.chevron_right_rounded, size: 16, color: KalendrTheme.muted(context)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(e.title,
+                    style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700,
+                        color: KalendrTheme.text(context))),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Icon(Icons.schedule_rounded, size: 12, color: KalendrTheme.muted(context)),
+                  const SizedBox(width: 4),
+                  Text(timeStr,
+                      style: GoogleFonts.nunito(fontSize: 12, color: KalendrTheme.muted(context))),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      entry.group?.name ?? context.s.personal,
+                      style: GoogleFonts.nunito(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (e.createdByUsername.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      e.createdByUsername,
+                      style: GoogleFonts.nunito(fontSize: 11, color: KalendrTheme.muted(context)),
+                    ),
+                  ],
+                ]),
+              ]),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade300, size: 18),
+          ),
         ]),
-      ),
       ),
     );
   }
 
   Widget _buildSkeleton() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: List.generate(5, (i) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: KalendrTheme.surface(context), borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [
-          Skeleton(width: 38, height: 38, radius: 19),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Skeleton(width: double.infinity, height: 13, radius: 6),
-            const SizedBox(height: 6),
-            Skeleton(width: 80, height: 11, radius: 5),
-          ])),
-        ]),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      children: List.generate(6, (i) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (i == 0 || i == 3) ...[
+            Skeleton(width: 80, height: 13, radius: 6),
+            const SizedBox(height: 8),
+          ],
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: KalendrTheme.surface(context),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(children: [
+              Container(width: 5, height: 40, decoration: BoxDecoration(
+                color: KalendrTheme.divider(context),
+                borderRadius: BorderRadius.circular(4),
+              )),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Skeleton(width: 160, height: 13, radius: 6),
+                const SizedBox(height: 6),
+                Skeleton(width: 100, height: 11, radius: 5),
+              ])),
+            ]),
+          ),
+        ],
       )),
     );
   }
+}
+
+class _EventEntry {
+  final CalendarEvent event;
+  final Group? group;
+  _EventEntry(this.event, this.group);
 }
