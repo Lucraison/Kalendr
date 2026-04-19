@@ -41,19 +41,19 @@ jobs:
           echo "storeFile=kalendr-release.keystore" >> kalendr_app/android/key.properties
 
       - name: Build AAB
-        run: flutter build appbundle --release --build-number=${{ github.run_number }}
+        run: flutter build appbundle --release --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }}
         working-directory: kalendr_app
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload to Play Store (Internal Track)
+      - name: Upload to Play Store (Closed Testing - alpha)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.kalendr.kalendr_app
           releaseFiles: kalendr_app/build/app/outputs/bundle/release/app-release.aab
-          track: internal
+          track: alpha
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4

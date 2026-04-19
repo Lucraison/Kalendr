@@ -2,6 +2,8 @@ name: kalendr_app
 description: "Shared calendar app for family and friend groups."
 publish_to: 'none'
 version: 1.0.0+1
+# CI overrides both versionName and versionCode via --build-name / --build-number
+# (run number is injected in .github/workflows/build-android.yml). Local builds use 1.0.0+1.
 
 environment:
   sdk: ^3.6.2
