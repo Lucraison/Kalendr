@@ -406,12 +406,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final s = context.s;
     final auth = context.read<AppProvider>().auth;
-    final myUserId = auth.userId;
     final allSelected = _eventsForDay(_selectedDay);
-    // Others' work schedules go to the avatar strip (you already know your own).
-    final othersWork = allSelected
-        .where((ew) => ew.event.isWorkHours && ew.event.createdByUserId != myUserId)
-        .toList();
+    // All work schedules (yours + others') go to the avatar strip.
+    // `_buildWhoIsWorking` renders your own with a "You" marker and primary color.
+    final workShifts = allSelected.where((ew) => ew.event.isWorkHours).toList();
     final selectedEvents = allSelected.where((ew) => !ew.event.isWorkHours).toList();
     final today = DateTime.now();
     final todayEvents = _eventsForDay(today);
@@ -608,8 +606,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               ]),
                             ),
                             const SizedBox(height: 12),
-                            if (othersWork.isNotEmpty) ...[
-                              _buildWhoIsWorking(othersWork),
+                            if (workShifts.isNotEmpty) ...[
+                              _buildWhoIsWorking(workShifts),
                               const SizedBox(height: 12),
                             ],
                             if (_calendarFormat == CalendarFormat.week)
