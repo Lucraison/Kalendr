@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -14,8 +16,29 @@ import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/onboarding_screen.dart';
 
-void main() {
+/// Runs in a separate isolate when a push arrives with the app terminated or
+/// backgrounded. Must be a top-level function. We don't do any UI work here —
+/// Android shows the notification itself from the FCM payload; this exists
+/// only so the plugin can wire up the isolate.
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase must be initialised before anything touches FCM (PushService,
+  // background handler, token fetch).
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  } catch (e) {
+    // Don't block app launch if Firebase fails (e.g. missing google-services
+    // on a dev build) — push simply won't work.
+    debugPrint('Firebase init failed: $e');
+  }
+
   // Enable edge-to-edge rendering so the app draws behind system bars.
   // This prevents Samsung (and other Android) nav bars from overlapping
   // the bottom NavigationBar. Flutter's Scaffold will then use window

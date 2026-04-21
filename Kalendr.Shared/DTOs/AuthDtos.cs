@@ -8,3 +8,4 @@ public record ForgotPasswordResponse(string MaskedEmail);
 public record ResetPasswordRequest(string UsernameOrEmail, string Code, string NewPassword);
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record ChangeEmailRequest(string CurrentPassword, string NewEmail);
+public record RegisterDeviceRequest(string Token, string Platform);

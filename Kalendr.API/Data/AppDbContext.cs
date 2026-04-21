@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<EventComment> Comments => Set<EventComment>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<EventGroupShare> EventGroupShares => Set<EventGroupShare>();
+    public DbSet<UserDevice> UserDevices => Set<UserDevice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -101,5 +102,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany()
             .HasForeignKey(s => s.GroupId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserDevice>()
+            .HasOne(d => d.User)
+            .WithMany()
+            .HasForeignKey(d => d.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // One FCM token should belong to at most one user at a time — if a user
+        // logs out and another logs in on the same device, we delete+re-insert.
+        modelBuilder.Entity<UserDevice>()
+            .HasIndex(d => d.Token)
+            .IsUnique();
     }
 }

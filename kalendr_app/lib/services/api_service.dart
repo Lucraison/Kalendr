@@ -282,4 +282,17 @@ class ApiService {
   Future<void> deleteAccount() =>
       _handle(() => http.delete(Uri.parse('$_base/api/auth/account'), headers: _headers),
           (_) => null);
+
+  // Push notifications — FCM device registration
+  Future<void> registerFcmToken(String token, String platform) =>
+      _handle(() => http.post(Uri.parse('$_base/api/auth/fcm-token'),
+          headers: _headers, body: jsonEncode({'token': token, 'platform': platform})),
+          (_) => null);
+
+  Future<void> unregisterFcmToken(String token) =>
+      _handle(() => http.delete(
+            Uri.parse('$_base/api/auth/fcm-token').replace(queryParameters: {'token': token}),
+            headers: _headers,
+          ),
+          (_) => null);
 }

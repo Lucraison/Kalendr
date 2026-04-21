@@ -171,6 +171,56 @@ public class AuthController(AppDbContext db, IConfiguration config, IEmailServic
         return Ok();
     }
 
+    // Registers an FCM token for the current user. Tokens are unique globally —
+    // if the same token is already on another user (reinstall / account switch on
+    // same device) we reassign it. Safe to call on every app start.
+    [HttpPost("fcm-token")]
+    [Authorize]
+    public async Task<IActionResult> RegisterDevice(RegisterDeviceRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Token))
+            return BadRequest(new { message = "Token required." });
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var platform = string.IsNullOrWhiteSpace(req.Platform) ? "android" : req.Platform;
+        var existing = await db.UserDevices.FirstOrDefaultAsync(d => d.Token == req.Token);
+
+        if (existing is null)
+        {
+            db.UserDevices.Add(new UserDevice
+            {
+                UserId = userId,
+                Token = req.Token,
+                Platform = platform,
+                CreatedAt = DateTime.UtcNow,
+                LastSeenAt = DateTime.UtcNow,
+            });
+        }
+        else
+        {
+            existing.UserId = userId;
+            existing.Platform = platform;
+            existing.LastSeenAt = DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
+        return Ok();
+    }
+
+    // Called on logout — remove this device from the current user so pushes stop.
+    [HttpDelete("fcm-token")]
+    [Authorize]
+    public async Task<IActionResult> UnregisterDevice([FromQuery] string token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return BadRequest();
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await db.UserDevices
+            .Where(d => d.Token == token && d.UserId == userId)
+            .ExecuteDeleteAsync();
+        return NoContent();
+    }
+
     private string GenerateToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));

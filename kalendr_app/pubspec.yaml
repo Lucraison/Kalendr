@@ -27,6 +27,12 @@ dependencies:
   share_plus: ^10.1.4
   flutter_native_splash: ^2.4.1
 
+  # Firebase Cloud Messaging for OS push notifications (Android).
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
+  # Used to show notifications when a push arrives while the app is in the foreground.
+  flutter_local_notifications: ^17.2.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

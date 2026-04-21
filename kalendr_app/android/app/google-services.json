@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "125508301259",
+    "project_id": "chalk-f41d4",
+    "storage_bucket": "chalk-f41d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:125508301259:android:7382dfbff12c43adc5864e",
+        "android_client_info": {
+          "package_name": "com.kalendr.kalendr_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_Wqv5u4AhnFOoRbt4DOc80ZeOo_tbZZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

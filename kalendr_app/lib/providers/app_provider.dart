@@ -5,11 +5,13 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/auth_state.dart';
 import '../services/hub_service.dart';
+import '../services/push_service.dart';
 
 class AppProvider extends ChangeNotifier {
   final ApiService api = ApiService();
   final AuthState auth = AuthState();
   final HubService hub = HubService();
+  late final PushService push = PushService(api);
 
   bool _initialized = false;
   bool get initialized => _initialized;
@@ -78,6 +80,9 @@ class AppProvider extends ChangeNotifier {
     if (auth.isLoggedIn) {
       _startPolling();
       _connectHub();
+      // Re-register the FCM token on every app start — cheap, and catches
+      // token rotation that happened while the app was closed.
+      unawaited(push.registerForCurrentUser());
     }
   }
 
@@ -161,6 +166,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     _startPolling();
     _connectHub();
+    unawaited(push.registerForCurrentUser());
   }
 
   Future<void> register(String username, String email, String password) async {
@@ -169,6 +175,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     _startPolling();
     _connectHub();
+    unawaited(push.registerForCurrentUser());
   }
 
   Future<void> joinHubGroup(String groupId) => hub.joinGroup(groupId);
@@ -178,6 +185,9 @@ class AppProvider extends ChangeNotifier {
   Future<void> logout() async {
     _notifTimer?.cancel();
     _unreadCount = 0;
+    // Unregister BEFORE clearing auth — the backend endpoint requires the
+    // JWT to know whose device to remove.
+    await push.unregisterForCurrentUser();
     await hub.disconnect();
     await auth.clear(api);
     notifyListeners();
