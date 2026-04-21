@@ -1,4 +1,6 @@
 using System.Text;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Kalendr.API.Data;
 using Kalendr.API.Hubs;
 using Kalendr.API.Services;
@@ -11,6 +13,28 @@ using Scalar.AspNetCore;
 // Npgsql 6+ enforces UTC-only DateTime by default. This restores legacy behaviour
 // so wall-clock times stored by the app continue to work without a data migration.
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+// Initialise Firebase Admin once per process. The SDK reads credentials from
+// the file at GOOGLE_APPLICATION_CREDENTIALS (set in the kalendr.service unit
+// on prod). If unset/missing — e.g. local dev without FCM set up — we just
+// skip: FirebasePushService treats a null DefaultInstance as a no-op so the
+// rest of the API still works.
+if (FirebaseApp.DefaultInstance is null)
+{
+    try
+    {
+        FirebaseApp.Create(new AppOptions
+        {
+            Credential = GoogleCredential.GetApplicationDefault(),
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(
+            $"[startup] Firebase Admin init skipped: {ex.Message}. " +
+            "Push notifications will be disabled for this process.");
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +84,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IPushService, FirebasePushService>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 

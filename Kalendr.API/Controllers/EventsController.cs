@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Kalendr.API.Data;
 using Kalendr.API.Models;
 using Kalendr.API.Hubs;
+using Kalendr.API.Services;
 using Kalendr.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,7 @@ namespace Kalendr.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : ControllerBase
+public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub, IPushService push) : ControllerBase
 {
     private Guid CurrentUserId =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -158,6 +159,17 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             db.Notifications.AddRange(notifs);
             await db.SaveChangesAsync();
 
+            // Push to every member who just got a DB notification. All notifs
+            // in this batch share the same Message (derived from ev.IsWorkHours,
+            // which is constant for this event), so one body for all.
+            if (notifs.Count > 0)
+            {
+                await push.SendToUsersAsync(
+                    notifs.Select(n => n.UserId),
+                    notifs[0].Message,
+                    ev.Id);
+            }
+
             return CreatedAtAction(nameof(GetEvent), new { id = ev.Id }, dto);
         }
 
@@ -266,6 +278,17 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
             }
             db.Notifications.AddRange(notifs);
             await db.SaveChangesAsync();
+
+            // Batch-create only sends one notification per affected member
+            // (not one per event), and all share the same body derived from
+            // firstEv.
+            if (notifs.Count > 0)
+            {
+                await push.SendToUsersAsync(
+                    notifs.Select(n => n.UserId),
+                    notifs[0].Message,
+                    firstEv.Id);
+            }
         }
         else
         {
@@ -470,19 +493,26 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub) : C
         db.Comments.Add(comment);
 
         // Notify event owner if they didn't comment themselves
+        string? pushBody = null;
         if (ev.CreatedByUserId != CurrentUserId)
         {
             var commenter = await db.Users.FindAsync(CurrentUserId);
+            pushBody = $"{commenter!.Username} commented on \"{ev.Title}\"";
             db.Notifications.Add(new Notification
             {
                 UserId = ev.CreatedByUserId,
-                Message = $"{commenter!.Username} commented on \"{ev.Title}\"",
+                Message = pushBody,
                 EventId = id,
             });
         }
 
         await db.SaveChangesAsync();
         await db.Entry(comment).Reference(c => c.User).LoadAsync();
+
+        if (pushBody is not null)
+        {
+            await push.SendToUsersAsync(new[] { ev.CreatedByUserId }, pushBody, id);
+        }
 
         return Ok(new CommentDto(comment.Id, comment.UserId, comment.User.Username, comment.Content, comment.CreatedAt));
     }
