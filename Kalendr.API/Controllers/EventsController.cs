@@ -159,10 +159,12 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub, IPu
             db.Notifications.AddRange(notifs);
             await db.SaveChangesAsync();
 
-            // Push to every member who just got a DB notification. All notifs
-            // in this batch share the same Message (derived from ev.IsWorkHours,
-            // which is constant for this event), so one body for all.
-            if (notifs.Count > 0)
+            // Push only for personal events. Work-schedule events still get an
+            // in-app notification (DB row above) so they show in the activity
+            // tab, but we deliberately skip FCM for them: they're high-volume
+            // and low-urgency — seeing "Alice added her work schedule" in the
+            // list is fine, but it shouldn't wake your phone.
+            if (notifs.Count > 0 && !ev.IsWorkHours)
             {
                 await push.SendToUsersAsync(
                     notifs.Select(n => n.UserId),
@@ -281,8 +283,10 @@ public class EventsController(AppDbContext db, IHubContext<CalendarHub> hub, IPu
 
             // Batch-create only sends one notification per affected member
             // (not one per event), and all share the same body derived from
-            // firstEv.
-            if (notifs.Count > 0)
+            // firstEv. Skip FCM entirely for work-schedule batches — those are
+            // the worst push spammers (post next week's shifts → everyone's
+            // phone buzzes). In-app notification still written above.
+            if (notifs.Count > 0 && !firstEv.IsWorkHours)
             {
                 await push.SendToUsersAsync(
                     notifs.Select(n => n.UserId),

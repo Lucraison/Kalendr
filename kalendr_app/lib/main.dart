@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_nav.dart';
 import 'providers/app_provider.dart';
 import 'theme.dart';
 import 'l10n/app_strings.dart';
@@ -65,6 +66,7 @@ class KalendrApp extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     return MaterialApp(
       title: 'Chalk',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: KalendrTheme.light(),
       darkTheme: KalendrTheme.dark(),
